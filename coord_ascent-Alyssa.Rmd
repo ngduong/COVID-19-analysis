@@ -52,8 +52,8 @@ logistic_stuff = function(data, betavec) {
   
   #scalar
   grad <- c(1 / (1 + exp(-b*(x - c))),
-            (a*(x - c)*exp(b*(x - c))) / (1 + exp(b*(x - c)))^2,
-            (a*b*exp(b*(x - c))) / (1 + exp(b*(x - c)))^2
+            (a*(x - c)*exp(-b*(x - c))) / (1 + exp(-b*(x - c)))^2, #add minus sign in exp()
+            (a*b*exp(-b*(x - c))) / (1 + exp(-b*(x - c)))^2
             )
   
   #vector of 2
