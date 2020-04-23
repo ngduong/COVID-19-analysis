@@ -25,42 +25,33 @@ covid = read.csv(file.path(getwd(), "covid_final.csv")) %>%
 #Log-likelihood function
 
 ```{r}
-func = function(t, y, betavec) {
+logisticfunc = function(t, y, betavec) {
   a = betavec[1]
   b = betavec[2]
   c = betavec[3]
   # Expu
-  expu = exp(-b * (t - c))
+  expu = exp(b*(t - c))
   
   # Log-likelihood
   loglik = sum(log(a) - log(1 + expu))
   
   # Gradient
-  grad = vector(mode = "numeric", 3)
-  
+  grad = rep(0,3)
   grad[1] = sum(1/a)
   grad[2] = sum((t-c) / (1 + expu))
-  grad[3] = sum(b / (1 + expu))
+  grad[3] = sum(-b / (1 + expu))
   
   # Hessian Matrix
-  hess = matrix(data = NA, nrow = 3, ncol = 3)
-  hess[1,1] = sum(- 1 / a^2)
-  hess[2,2] = sum(((1 + expu) * (-(t - c)^2 * expu) + (t - c)^2 * expu * exp(-2)) / (1 + expu)^2)
-  hess[3,3] = sum(((1 + expu) * (-b^2 * expu) + b^2 * expu * exp(-2)) / (1 + expu)^2)
-  
-  # Remainder of hessian matrix
-  for (i in 1:3) {
-    for (j in 1:3) {
-      if (i == j) {
-        next()
-      } else if (i == 1 | j == 1) {
-        hess[i,j] = 0
-      } else {
-        hess[i,j] = sum((-b * (t - c) * exp(-2) * expu - b^2 * expu * (1 + expu)) / (1 + expu)^2)
-      }
-    }
-  }
-  
+  hess = matrix(data = 0, nrow = 3, ncol = 3)
+  hess[1,1] = sum(-1/a^2)
+  hess[2,2] = sum(-((t-c)^2)*expu/(expu+1)^2)
+  hess[3,3] = sum(-(b^2)*expu/(expu+1)^2)
+  hess[1,2] = 0 
+  hess[1,3] = 0
+  hess[2,1] = 0
+  hess[2,3] = sum((b*(t-c)*expu)/((expu+1)^2)-1/(expu+1))
+  hess[3,1] = 0
+  hess[3,2] = sum((b*(t-c)*expu)/((expu+1)^2)-1/(expu+1))
   return(list(loglik = loglik, grad = grad, Hess = hess)) 
 }
 ```
@@ -106,24 +97,17 @@ NewtonRaphson <- function(y, t, func, start, tol=1e-7, maxiter = 200) {
 ```
 
 ```{r}
-func(covid$confirmed_cases, covid$t, c(10000,1.5,200))
-NewtonRaphson(covid$confirmed_cases, covid$t, func, c(10000,1.5,100))
+logisticfunc(covid$confirmed_cases, covid$t, c(10000,1.5,100))
+#NewtonRaphson(covid$confirmed_cases, covid$t, logisticstuff, c(10000,1.5,200))
 ```
 
 
-
-
-
-# Task 2: Clustering your fitted curves
-
-clustering is an effective data exploring tools; It helps develop hypothesis and identify potential risk factors;  Apply K-mean and Guassian mixture model (with EM algorithm) to cluster the fitted parameters $(\hat{a},\hat{b},\hat{c})$; Which algorithm does a better job in clustering those curves? Are the resulting clusters related to geogrpahic regions, or the starting timeing of the local virus speading, or the resources of the regions? You may use external informations to help understand the clusters, i.e. find plausible explanations why some regions have similar $(a, b,c)$?
-
-
-
-
-# Task 3: Write a summary report to share your findings;
-
+# Task 2: Clustering 
 ```{r}
-#Includes uour R codes
+
 ```
+
+
+
+
 
