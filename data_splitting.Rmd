@@ -1,0 +1,34 @@
+---
+title: "Data Split"
+author: "Adeline Shin"
+date: "4/22/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(anytime)
+```
+
+## Loading and Cleaning Data
+```{r}
+full_df = read_csv("./covid_final.csv") %>% 
+  mutate(
+    date = parse_date_time(x = full_df$date, orders = c("m-d-y", "m/d/y")))
+```
+
+## Splitting on April 10th for 70/30 Split
+```{r}
+test_df = full_df %>% 
+  filter(date > "2020-04-10")
+
+write.csv(test_df, file = "./covid_test.csv")
+
+training_df = full_df %>% 
+  filter(date < "2020-04-10")
+
+write.csv(training_df, file = "./covid_training.csv")
+```
+

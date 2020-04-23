@@ -12,7 +12,7 @@ covid = read.csv(file.path(getwd(), "covid19-1.csv")) %>%
 ########## Additional days
 http = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/"
 
-dates = seq.Date(as.Date("03-24-2020", format = "%m-%d-%Y"), 
+dates = seq.Date(as.Date("03-25-2020", format = "%m-%d-%Y"), 
                  as.Date("04-20-2020", format = "%m-%d-%Y"), 
                  by = "day")
 dates = format(dates, "%m-%d-%Y")
@@ -44,4 +44,4 @@ df = dplyr::bind_rows(files) %>%
 
 covid_final = bind_rows(covid, df)
 
-#write.csv(covid_final, file = file.path(getwd(), "covid_final.csv"))
+write.csv(covid_final, file = file.path(getwd(), "covid_final.csv"), row.names = FALSE)

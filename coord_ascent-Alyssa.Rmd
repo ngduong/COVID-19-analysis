@@ -1,0 +1,164 @@
+---
+title: "gradient descent"
+author: "Alyssa Vanderbeek"
+date: "4/22/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+```{r data}
+covid = read.csv(file.path(getwd(), "covid_final.csv")) %>%
+  mutate(date = lubridate::parse_date_time(x = date,
+                                           orders = c("m/d/y", "m-d-Y")),
+         t = as.numeric(difftime(date, min(date), units = "days"))) # days since "first infection", defined as the first observed time point
+
+
+## group data by country
+by_country = covid %>%
+  group_by(country_region, t) %>%
+  summarise(confirmed_cases = sum(confirmed_cases), # group by date and take total 
+            fatalities = sum(fatalities))
+
+
+covid_ls = list(x = by_country[,c("country_region", "t")], y = by_country$confirmed_cases)
+
+
+by_country %>%
+  ggplot(., aes(x = t, y = confirmed_cases, group = country_region)) + 
+  geom_line() + 
+  labs(title = "confirmed_cases per day, by country",
+       xlab = "Days since first infection",
+       ylab = "Number of confirmed_cases")
+```
+
+
+
+```{r fns}
+# FUNCTION TO CALCULATE THE LOG-LIKELIHOOD, GRADIENT, AND HESSIAN
+logistic_stuff = function(data, betavec) {
+  a = betavec[1] # upper bound
+  b = betavec[2] # growth rate
+  c = betavec[3] # midpoint of the curve
+  x = data$t  # predictor
+  y = data$fatalities # outcome
+  
+  f = a / (1 + exp(-b*(x - c))) # logistic curve fn
+  loglik = NA
+  
+  #scalar
+  grad <- c(1 / (1 + exp(-b*(x - c))),
+            (a*(x - c)*exp(b*(x - c))) / (1 + exp(b*(x - c)))^2,
+            (a*b*exp(b*(x - c))) / (1 + exp(b*(x - c)))^2
+            )
+  
+  #vector of 2
+  Hess <- diag(length(betavec)) # in gradient descent, the Hessian used is the identity matrix 
+  
+  return(list(loglik = loglik, grad = grad, Hess = Hess))
+}
+
+# data = dataset
+# stuff_fn = function to calculate stuff (in this case, logistic_stuff)
+# start = vector of starting values for [a, b, c]
+#coord_ascent = function(data, stuff_fn, start, tol = 1e-10, maxiter = 200) {
+  x = data$t  # predictor
+  xm <- x #cbind(rep(1, nrow(x)), scale(x)) # standardize the data
+  i <- 0 
+  pp <- length(start)
+  n <- length(data_ls$y)
+  betavec <- start
+  a = betavec[1] # upper bound
+  b = betavec[2] # growth rate
+  c = betavec[3] # midpoint of the curve
+  loglik <- 0
+  res <- c(0, loglik, betavec)
+  prevloglik <- -Inf # To make sure it iterates 
+  while (i < maxiter && abs(loglik - prevloglik) > tol && loglik < Inf) {
+    i <- i + 1 
+    prevloglik <- loglik
+    for (j in 1:pp) {
+      u <- xm %*% betavec
+      expu <- exp(u) 
+      prob <- expu / (expu + 1)
+      w <- prob * (1 - prob) # weights
+      # avoid coeffcients diverging in order to achieve fitted  probabilities of 0 or 1.
+      w <- ifelse(abs(w-0) < 1e-5, 1e-5, w)
+      z <- u + (data_ls$y - prob) / w
+      # calculate noj
+      z_j <- xm[,-j] %*% betavec[-j]
+      betavec[j] <- Sfunc(sum(w * (xm[,j]) * (z - z_j)), lambda) / (sum(w * xm[,j] * xm[,j]))
+    }
+    loglik <- sum(w * (z - xm %*% betavec)^2) / (2 * n) + lambda * sum(abs(betavec))
+    res <- rbind(res, c(i, loglik, betavec))}  
+  return(res)
+#}
+```
+
+
+```{r dev}
+ny = covid %>%
+  filter(country_region == "US") %>%
+  filter(province_state == "New York") %>%
+  mutate(country_region = as.character(country_region)) %>%
+  group_by(country_region, t) %>% # different count by latitude and longitude
+  summarise(confirmed_cases = sum(confirmed_cases), # group by date and take total 
+            fatalities = sum(fatalities))
+ny_ls = list(x = ny[,c("country_region", "t")], y = ny$confirmed_cases)
+
+plot(x = ny$t,
+     y = ny$confirmed_cases)
+
+
+#### Newton-Raphson with halving step (gradient)
+
+data = ny_ls
+start = c(a = 1e6, b = 0.4, 70)
+tol = 1e-10
+maxiter = 200
+
+x = data$x$t  # predictor
+y = data$y
+
+i <- 0 
+pp <- length(start)
+n <- length(data$y) 
+halves <- 0.5^(seq(1, 30, 1))
+betavec <- start
+stuff = logistic_stuff(data, betavec)
+loglik <- 0
+res <- c(0, loglik, betavec)
+prevloglik <- -Inf # To make sure it iterates 
+
+while (i < maxiter && abs(stuff$loglik - prevloglik) > tol && loglik < Inf) {
+    i <- i + 1
+    prevloglik <- stuff$loglik
+    prev <- start
+    d <- -diag(length(betavec)) %*% stuff$grad # replaces Hessian with similar matrix that is negative definite
+    start <- prev + d
+    
+    # For lambda = 1
+    if (stuff.func(dat, start)$loglik > stuff.func(dat, prev)$loglik ) {
+      stuff <- stuff.func(dat, start) # log-lik, gradient, Hessian
+      res <- rbind(res, c(i, stuff$loglik, start))
+    } else {# For halving steps
+      
+      half_cur <- prev + (halves[subit])*d
+      
+      while (stuff.func(dat, half_cur)$loglik <= stuff.func(dat, prev)$loglik) {
+        subit <- subit + 1
+        half_cur <- prev + (halves[subit])*d
+      }
+      start <- half_cur
+      stuff <- stuff.func(dat, start) # log-lik, gradient, Hessian
+      res <- rbind(res, c(i, stuff$loglik, start))
+    }
+  }
+
+```
+
+
