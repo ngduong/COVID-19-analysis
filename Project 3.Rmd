@@ -1,46 +1,115 @@
 ---
-title: 'Project 3: Analyses of daily COVID-19 cases across nations'
+title: 'Newton Raphson'
 output:
   pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
-The pandemic of COVID-19 is the biggest challenge that the world is facing right now. Our lifes are all deeply affected by this public health crisis.  The White House has pulled together multiple open research data sets, and called for data scientist to assist the modeling  of the growth trajecties of confirmed cases across the worlds, and to help prediction future cases and to identify risk factors. I would like to encourage you to be part of the force; 
+```{r include = FALSE}
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(anytime)
+```
 
-The attached covid19-1.csv, is a subset of the open data, which recorded the following variables:
+```{r}
+covid = read.csv(file.path(getwd(), "covid_final.csv")) %>%
+  mutate(date = lubridate::parse_date_time(x = date,
+                                           orders = c("m/d/y", "m-d-Y")),
+         t = as.numeric(difftime(date, min(date), units = "days"))) %>% 
+  filter(country_region == "US", province_state == "New York") %>% 
+  filter(date > "2020-03-15") %>% filter(date < "2020-03-31")
+```
 
-**Id:** Record ID
+#Log-likelihood function
 
-**Province/State:** The lcoal state/province of the record; 54% records do not have this info;
+```{r}
+func = function(t, y, betavec) {
+  a = betavec[1]
+  b = betavec[2]
+  c = betavec[3]
+  # Expu
+  expu = exp(-b * (t - c))
+  
+  # Log-likelihood
+  loglik = sum(log(a) - log(1 + expu))
+  
+  # Gradient
+  grad = vector(mode = "numeric", 3)
+  
+  grad[1] = sum(1/a)
+  grad[2] = sum((t-c) / (1 + expu))
+  grad[3] = sum(b / (1 + expu))
+  
+  # Hessian Matrix
+  hess = matrix(data = NA, nrow = 3, ncol = 3)
+  hess[1,1] = sum(- 1 / a^2)
+  hess[2,2] = sum(((1 + expu) * (-(t - c)^2 * expu) + (t - c)^2 * expu * exp(-2)) / (1 + expu)^2)
+  hess[3,3] = sum(((1 + expu) * (-b^2 * expu) + b^2 * expu * exp(-2)) / (1 + expu)^2)
+  
+  # Remainder of hessian matrix
+  for (i in 1:3) {
+    for (j in 1:3) {
+      if (i == j) {
+        next()
+      } else if (i == 1 | j == 1) {
+        hess[i,j] = 0
+      } else {
+        hess[i,j] = sum((-b * (t - c) * exp(-2) * expu - b^2 * expu * (1 + expu)) / (1 + expu)^2)
+      }
+    }
+  }
+  
+  return(list(loglik = loglik, grad = grad, Hess = hess)) 
+}
+```
 
-**Country/Region:** The country/regionoof the record;
 
-**Lat:** Lattudiute of the record;
+```{r include = FALSE,warning = FALSE, message = FALSE}
+#### Newton-Raphson with gradient descent and step-halving
+NewtonRaphson <- function(y, t, func, start, tol=1e-7, maxiter = 200) {
+  i <- 0
+  cur <- start
+  x = as.matrix(x)
+  stuff <- func(t,y,cur)
+  res <- c(0, stuff$loglik, cur)
+  prevloglik <- -Inf
+  while(i < maxiter && abs(stuff$loglik - prevloglik) > tol) {
+    i <- i + 1
+    prevloglik <- stuff$loglik
+    prev <- cur
+    grad <- stuff$grad
+    hess <- stuff$Hess
+    
+    #gradient descent 
+    if(t(grad) %*% hess %*% grad > 0){#positive definite matrix
+    inv.hess = 
+      solve(hess - (max(diag(hess))+100)*diag(nrow(hess)))} #make positive definite matrix negative definite
+    else 
+    {inv.hess <- solve(hess)}
+    
+    cur <- prev - inv.hess%*%grad
+    stuff <- func(y, x, cur)
+    
+    #step-halving
+    step = 0
+    while (prevloglik > stuff$loglik){#moving too far -> halve step
+    step = step + 1 
+    cur <- prev - (1/2)^step * inv.hess%*%grad
+    stuff <- func(y, x, cur)
+    }
+  res <- rbind(res, c(i, stuff$loglik, cur))
+  }
+  return(res)
+  }
+```
 
-**Long:** Longitude of the record;
+```{r}
+func(covid$confirmed_cases, covid$t, c(10000,1.5,200))
+NewtonRaphson(covid$confirmed_cases, covid$t, func, c(10000,1.5,100))
+```
 
-**Date:** Date of the record; from Jan 21 to March 23; 
-
-**ConfirmedCases:** The number of confirme case on that day;
-
-**Fatalities:** The number of death on that day;
-
-
-
-# Task 1: Fit a logistic curve to the cumulative confirmed cases in each region;
-
-Logisitc curves could be one way to model the trajectory of cumulative cases;  It is a parametric function with the form 
-$$f(t) = \frac{a}{ 1+ exp\{-b(t-c)\}},$$
-where $t$ is the days since the first infection; $a$ is the upper bound, i.e. the maxium number of cases a region can reach, $b$ is growth rate, and $c$ is the mid-point, where the curve changes from convex to concave; Each curve is uniquely defined by $(a,b,c)$. By design a logistic curve increases exponentially at begining and slows down at the end; 
-
-
-**Task 1.1** Develop an optmization algorithm to fit a logisitc curve to each region, and find a way to visualize your fitted curves effectively;   What you learn from your fitted models? e.g. how many regions have passed the midpoint? how many regions are approaching to the end of the virus speading; Which regions have faster growth rates and which regions have more "flat" growth? 
-
-
-**Task 1.2** You can find daily reports after March 23 from the following github site
-
-https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_daily_reports
-
-From those data, do you think if the logistic curve is a reasonable model for fitting the curmulative casesa and predicting future new cases?
 
 
 
@@ -48,6 +117,8 @@ From those data, do you think if the logistic curve is a reasonable model for fi
 # Task 2: Clustering your fitted curves
 
 clustering is an effective data exploring tools; It helps develop hypothesis and identify potential risk factors;  Apply K-mean and Guassian mixture model (with EM algorithm) to cluster the fitted parameters $(\hat{a},\hat{b},\hat{c})$; Which algorithm does a better job in clustering those curves? Are the resulting clusters related to geogrpahic regions, or the starting timeing of the local virus speading, or the resources of the regions? You may use external informations to help understand the clusters, i.e. find plausible explanations why some regions have similar $(a, b,c)$?
+
+
 
 
 # Task 3: Write a summary report to share your findings;
