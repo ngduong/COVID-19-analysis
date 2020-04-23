@@ -26,20 +26,94 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
 ```{r}
-df = read_csv("./covid19-1.csv") %>% 
+df = read_csv("./covid_final.csv") %>% 
   janitor::clean_names() %>% 
   mutate(province_state = factor(province_state),
          country_region = factor(country_region),
          date = as.Date(date, "%m/%d/%y"))
 
 df_raw = df %>% 
-  dplyr::select(lat, long, confirmed_cases, fatalities)
+  dplyr::select(lat, long, confirmed_cases, fatalities) %>% 
+  drop_na()
 ```
 
 ```{r}
 # correlation matrix
 res <- round(cor(df_raw) %>% as.matrix(), 2)
+
 corrplot(res, type = "upper", order = "hclust", 
          tl.col = "black", tl.srt = 45, tl.cex = 0.45)
+
+cor(df_raw)
+```
+
+```{r}
+df_filtered = df %>% 
+  dplyr::select(everything(), confirmed_cases, -x1, -fatalities)
+
+y = df_filtered %>% 
+  pull(confirmed_cases)
+
+x = df_filtered %>% 
+  dplyr::select(province_state:date) %>% 
+  mutate(date = factor(date),
+         date = fct_inorder(date))
+
+dat = cbind(y, x)
+```
+
+```{r, cache = TRUE}
+# logistic function
+
+logistic_stuff = function(x = pull(dat, x), y = pull(dat, y), params = list(a = 1000, b = 2, c = 100), func = log_lik) {
+  dat %>% group_by(country_region, province_state)
+  t = 0
+  while (y > 0) {
+    t = t + 1
+  }
+  u = params$a / (1 + exp(-params$b * (t - params$c)))
+  expu = exp(u)
+  loglik = func(y, params)
+  p = expu/(1 + expu)
+  grad = rep(0, 3)
+  for (i in 1:length(grad)) {
+    grad[i] = sum(t(x[,i]) %*% (y - p))
+  }
+  return(grad)
+}
+  Hess <- matrix(0, length(grad), length(grad))
+  for (i in 1:nrow(X)) {
+    Hess = Hess - X[i,] %*% t(X[i,]) * p[i] * (1 - p[i])
+  }
+  return(list(loglik = loglik, grad = grad, Hess = Hess))
+}
+
+logistic_stuff()
+
+dat %>% 
+  group_by(country_region, province_state) %>% 
+  filter(confirmed_cases == 0)
+
+pull(dat, confirmed_cases)
+
+logistic_stuff()
+
+  u = params$a / (1 +  exp(-params$b * (t - params$c)))
+  
+}
+```
+```{r}
+log_lik = function(cumsum = pull(dat, y), params = list(a = 1000, b = 2, c = 100)) {
+  dat %>% group_by(country_region, province_state)
+  t = 0
+  while (y > 0) {
+    t = t + 1
+  }
+  like = params$a / (1 + exp(-params$b * (t - params$c)))
+  log_lik = log(like)
+  return(log_lik)
+}
+
+log_lik()
 ```
 
