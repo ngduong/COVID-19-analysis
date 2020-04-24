@@ -187,22 +187,28 @@ Loop over countries
 
 ```{r}
 country_reg = by_country$country_region %>% unique() %>% as.vector()
-country_reg = country_reg[1:10]
 a.seq = seq(0, 1e6, 1e4)
 b.seq = seq(0, 1, 0.01)
 c.seq = seq(0, 90, 1)
 param_df = NULL
-fitted_list <- replicate(length(country_reg), data.frame())
+fitted_list <- list()
 
-for (i in 1:length(country_reg)){
- param = fit_curve(by_country %>% filter(country_region == country_reg[i]), 
+for (i in country_reg[1:10]){
+ param = fit_curve(by_country %>% filter(country_region == i), 
                       aseq = a.seq, bseq = b.seq, cseq = c.seq)
- fitted = logistic_pred(as.numeric(as.matrix(filter(by_country,country_region == country_reg[i])[,2])),
+ fitted = logistic_pred(as.numeric(as.matrix(filter(by_country,country_region == i)[,2])),
                         a = as.numeric(param[1]), 
                         b = as.numeric(param[2]),
                         c = as.numeric(param[3]))
  param_df = rbind(param_df, param)
  fitted_list[[i]] <- fitted
 }
+
+param_df1 = tibble(region = country_reg[1:10], 
+                   a = param_df[,1],
+                   b = param_df[,2],
+                   c = param_df[,3])
+param_df1
+fitted_list
 ```
 
