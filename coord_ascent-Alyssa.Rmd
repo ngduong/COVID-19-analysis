@@ -3,12 +3,14 @@ title: "gradient descent"
 author: "Alyssa Vanderbeek"
 date: "4/22/2020"
 output: pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
 library(tidyverse)
+library(plyr)
 ```
 
 ```{r data}
@@ -41,9 +43,6 @@ by_country %>%
 
 
 ```{r dev}
-
-
-
 # FUNCTION TO CALCULATE THE GRADIENT
 # logistic_gradient = function(data, a, b, c) {
 #   # a = betavec[1] # upper bound
@@ -101,7 +100,7 @@ fit_curve = function(data, aseq, bseq, cseq) {
   b = bseq[loc[1]]
   c = cvals[loc[1], loc[2]]
   
-  return(c(a, b, c))
+  return(cbind(a = a, b = b, c = c))
 }
 
 
@@ -182,9 +181,28 @@ lines(x = china$t,
 #   }
 #   
 # }
-
 ```
 
+Loop over countries 
 
+```{r}
+country_reg = by_country$country_region %>% unique() %>% as.vector()
+country_reg = country_reg[1:10]
+a.seq = seq(0, 1e6, 1e4)
+b.seq = seq(0, 1, 0.01)
+c.seq = seq(0, 90, 1)
+param_df = NULL
+fitted_list <- replicate(length(country_reg), data.frame())
 
+for (i in 1:length(country_reg)){
+ param = fit_curve(by_country %>% filter(country_region == country_reg[i]), 
+                      aseq = a.seq, bseq = b.seq, cseq = c.seq)
+ fitted = logistic_pred(as.numeric(as.matrix(filter(by_country,country_region == country_reg[i])[,2])),
+                        a = as.numeric(param[1]), 
+                        b = as.numeric(param[2]),
+                        c = as.numeric(param[3]))
+ param_df = rbind(param_df, param)
+ fitted_list[[i]] <- fitted
+}
+```
 
