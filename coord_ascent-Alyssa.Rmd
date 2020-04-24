@@ -97,8 +97,8 @@ fit_curve = function(data, aseq, bseq, cseq) {
   })
   
   loc = which(closs == min(closs), arr.ind = TRUE)
-  a = aseq[loc[1]]
-  b = bseq[loc[2]]
+  a = aseq[loc[2]]
+  b = bseq[loc[1]]
   c = cvals[loc[1], loc[2]]
   
   return(c(a, b, c))
@@ -106,25 +106,25 @@ fit_curve = function(data, aseq, bseq, cseq) {
 
 
 
-aseq = seq(0, 1e6, 1e4)
-bseq = seq(0, 1, 0.01)
-cseq = seq(0, 90, 1)
+a.seq = seq(0, 1e6, 1e4)
+b.seq = seq(0, 1, 0.01)
+c.seq = seq(0, 90, 1)
 
 
 usa = by_country %>%
   filter(country_region == "US")
 
-usa_curve = fit_curve(usa, aseq = aseq, bseq = bseq, cseq = cseq)
+usa_curve = fit_curve(usa, aseq = a.seq, bseq = b.seq, cseq = c.seq)
 usa_fitted = logistic_pred(usa$t, usa_curve[1], usa_curve[2], usa_curve[3])
 plot(x = usa$t,
      y = usa$confirmed_cases)
 lines(x = usa$t,
       y = usa_fitted)
+
+
 china = by_country %>%
   filter(country_region == "China")
-
-
-china_curve = fit_curve(china, aseq = aseq, bseq = bseq, cseq = cseq)
+china_curve = fit_curve(china, aseq = a.seq, bseq = b.seq, cseq = c.seq)
 china_fitted = logistic_pred(seq(0, 89, 1), china_curve[1], china_curve[2], china_curve[3])
 
 plot(x = china$t,
