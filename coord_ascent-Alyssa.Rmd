@@ -13,19 +13,21 @@ library(tidyverse)
 
 ```{r data}
 covid = read.csv(file.path(getwd(), "covid_final.csv")) %>%
+  filter(confirmed_cases > 0) %>%
   mutate(date = lubridate::parse_date_time(x = date,
-                                           orders = c("m/d/y", "m-d-Y")),
-         t = as.numeric(difftime(date, min(date), units = "days"))) # days since "first infection", defined as the first observed time point
+                                           orders = c("m/d/y", "m-d-Y"))) 
 
 
 ## group data by country
 by_country = covid %>%
+  group_by(country_region) %>%
+  mutate(t = as.numeric(difftime(date, min(date), units = "days"))) %>%
   group_by(country_region, t) %>%
   summarise(confirmed_cases = sum(confirmed_cases), # group by date and take total 
             fatalities = sum(fatalities))
 
 
-covid_ls = list(x = by_country[,c("country_region", "t")], y = by_country$confirmed_cases)
+# covid_ls = list(x = by_country[,c("country_region", "t")], y = by_country$confirmed_cases)
 
 
 by_country %>%
@@ -38,127 +40,151 @@ by_country %>%
 
 
 
-```{r fns}
-# FUNCTION TO CALCULATE THE LOG-LIKELIHOOD, GRADIENT, AND HESSIAN
-logistic_stuff = function(data, betavec) {
-  a = betavec[1] # upper bound
-  b = betavec[2] # growth rate
-  c = betavec[3] # midpoint of the curve
-  x = data$t  # predictor
-  y = data$fatalities # outcome
-  
-  f = a / (1 + exp(-b*(x - c))) # logistic curve fn
-  loglik = NA
-  
-  #scalar
-  grad <- c(1 / (1 + exp(-b*(x - c))),
-            (a*(x - c)*exp(-b*(x - c))) / (1 + exp(-b*(x - c)))^2, #add minus sign in exp()
-            (a*b*exp(-b*(x - c))) / (1 + exp(-b*(x - c)))^2
-            )
-  
-  #vector of 2
-  Hess <- diag(length(betavec)) # in gradient descent, the Hessian used is the identity matrix 
-  
-  return(list(loglik = loglik, grad = grad, Hess = Hess))
+```{r dev}
+
+
+
+# FUNCTION TO CALCULATE THE GRADIENT
+# logistic_gradient = function(data, a, b, c) {
+#   # a = betavec[1] # upper bound
+#   # b = betavec[2] # growth rate
+#   # c = betavec[3] # midpoint of the curve
+#   x = data$t  # predictor: days since first infection
+#   
+#   # gradient
+#   grad <- c(
+#     sum(2 / (1 + exp(-b*(x - c)))) / length(x),
+#     sum(-(2*a*(c - x)*exp(-b*(x - c))) / (1 + exp(-b*(x - c)))^2) / length(x) , 
+#     sum(-(2*a*b*exp(-b*(x - c))) / (1 + exp(-b*(x - c)))^2) / length(x)
+#   )
+# 
+#   return(grad)
+# }
+
+# calculate predictions given data and parameter values
+logistic_pred = function(t, a, b, c) {
+  t  # predictor: days since first infection
+  y_hat = a / (1 + exp(-b*(t - c)))
+  return(y_hat)
 }
 
-# data = dataset
-# stuff_fn = function to calculate stuff (in this case, logistic_stuff)
-# start = vector of starting values for [a, b, c]
-#coord_ascent = function(data, stuff_fn, start, tol = 1e-10, maxiter = 200) {
-  x = data$t  # predictor
-  xm <- x #cbind(rep(1, nrow(x)), scale(x)) # standardize the data
-  i <- 0 
-  pp <- length(start)
-  n <- length(data_ls$y)
-  betavec <- start
-  a = betavec[1] # upper bound
-  b = betavec[2] # growth rate
-  c = betavec[3] # midpoint of the curve
-  loglik <- 0
-  res <- c(0, loglik, betavec)
-  prevloglik <- -Inf # To make sure it iterates 
-  while (i < maxiter && abs(loglik - prevloglik) > tol && loglik < Inf) {
-    i <- i + 1 
-    prevloglik <- loglik
-    for (j in 1:pp) {
-      u <- xm %*% betavec
-      expu <- exp(u) 
-      prob <- expu / (expu + 1)
-      w <- prob * (1 - prob) # weights
-      # avoid coeffcients diverging in order to achieve fitted  probabilities of 0 or 1.
-      w <- ifelse(abs(w-0) < 1e-5, 1e-5, w)
-      z <- u + (data_ls$y - prob) / w
-      # calculate noj
-      z_j <- xm[,-j] %*% betavec[-j]
-      betavec[j] <- Sfunc(sum(w * (xm[,j]) * (z - z_j)), lambda) / (sum(w * xm[,j] * xm[,j]))
-    }
-    loglik <- sum(w * (z - xm %*% betavec)^2) / (2 * n) + lambda * sum(abs(betavec))
-    res <- rbind(res, c(i, loglik, betavec))}  
-  return(res)
-#}
+## Our goal is to minimize the loss function (SSE)
+loss = function(data, a, b, c) {
+  y = data$confirmed_cases
+  y_hat = logistic_pred(data$t, a, b, c) # predicted 
+  error = y_hat - y
+  
+  loss = sum( error^2 ) / length(y)
+  return(loss)
+}
+
+
+## Coordinate-wise optimization to fit logistic curve to data
+fit_curve = function(data, aseq, bseq, cseq) {
+  c_lim = c(min(cseq), max(cseq))
+  
+  # matrix of optimal values of c across all combos of a and b values
+  cvals = sapply(aseq, function(a){
+    sapply(bseq, function(b){
+      optimize(loss, interval = c_lim, data = data, a = a, b = b)$minimum
+    })
+  })
+  # matrix of the computed loss for all combos
+  closs = sapply(aseq, function(a){
+    sapply(bseq, function(b){
+      optimize(loss, interval = c_lim, data = data, a = a, b = b)$objective
+    })
+  })
+  
+  loc = which(closs == min(closs), arr.ind = TRUE)
+  a = aseq[loc[1]]
+  b = bseq[loc[2]]
+  c = cvals[loc[1], loc[2]]
+  
+  return(c(a, b, c))
+}
+
+
+
+aseq = seq(0, 1e6, 1e4)
+bseq = seq(0, 1, 0.01)
+cseq = seq(0, 90, 1)
+
+
+usa = by_country %>%
+  filter(country_region == "US")
+
+usa_curve = fit_curve(usa, aseq = aseq, bseq = bseq, cseq = cseq)
+usa_fitted = logistic_pred(usa$t, usa_curve[1], usa_curve[2], usa_curve[3])
+plot(x = usa$t,
+     y = usa$confirmed_cases)
+lines(x = usa$t,
+      y = usa_fitted)
+china = by_country %>%
+  filter(country_region == "China")
+
+
+china_curve = fit_curve(china, aseq = aseq, bseq = bseq, cseq = cseq)
+china_fitted = logistic_pred(seq(0, 89, 1), china_curve[1], china_curve[2], china_curve[3])
+
+plot(x = china$t,
+     y = china$confirmed_cases)
+lines(x = china$t,
+      y = china_fitted)
+# data = usa
+# start = c(a = 5e5, b = 0.4, c = 30)
+# #tol = 1e-10
+# maxiter = 200
+# 
+# x = data$t  # predictor
+# y = data$confirmed_cases
+# 
+# i <- 0
+# p <- length(start) # number of parameters being estimated
+# n <- length(y) # number of obervations
+# betavec <- start # initial guess of parameters
+# gradient = logistic_gradient(data, betavec)
+# Hess = diag(p) # for graident descent, the Hessian is the identity matrix
+# 
+# current_loss <- loss(data, betavec) # since our goal is to 
+# prev_loss <- -Inf # To make sure it iterates 
+# 
+# half_initial <- 0.5 # using half steps for betavec update
+# halving_iteration = 1
+# 
+# res = c(0, current_loss, betavec)
+# 
+# # while the current loss is greater than the last (since we want to minimize)
+# while (i < maxiter && current_loss < prev_loss) {
+#   i = i + 1
+#   prev_loss = current_loss
+#   
+#   gradient = logistic_gradient(data, betavec) # get new gradient
+#   betavec = betavec + Hess%*%gradient
+#   
+#   current_loss = loss(data, betavec) # updated loss with new parameter values
+#   
+#   continue = current_loss < prev_loss
+#   # while the current loss is greater than the last, keep halving the betavec
+#   
+#   if (continue) {
+#     while (continue == TRUE) {
+#       halving_iteration = halving_iteration + 1
+#       half = half_initial^halving_iteration
+#       betavec = betavec - half*gradient
+#       current_loss = loss(data, betavec)
+#       res = rbind(res, c(i, current_loss, betavec))
+#       
+#       continue = current_loss > prev_loss
+#     }
+#   } else {
+#       res = rbind(res, c(i, current_loss, betavec))
+#   }
+#   
+# }
+
 ```
 
 
-```{r dev}
-ny = covid %>%
-  filter(country_region == "US") %>%
-  filter(province_state == "New York") %>%
-  mutate(country_region = as.character(country_region)) %>%
-  group_by(country_region, t) %>% # different count by latitude and longitude
-  summarise(confirmed_cases = sum(confirmed_cases), # group by date and take total 
-            fatalities = sum(fatalities))
-ny_ls = list(x = ny[,c("country_region", "t")], y = ny$confirmed_cases)
-
-plot(x = ny$t,
-     y = ny$confirmed_cases)
-
-
-#### Newton-Raphson with halving step (gradient)
-
-data = ny_ls
-start = c(a = 1e6, b = 0.4, 70)
-tol = 1e-10
-maxiter = 200
-
-x = data$x$t  # predictor
-y = data$y
-
-i <- 0 
-pp <- length(start)
-n <- length(data$y) 
-halves <- 0.5^(seq(1, 30, 1))
-betavec <- start
-stuff = logistic_stuff(data, betavec)
-loglik <- 0
-res <- c(0, loglik, betavec)
-prevloglik <- -Inf # To make sure it iterates 
-
-while (i < maxiter && abs(stuff$loglik - prevloglik) > tol && loglik < Inf) {
-    i <- i + 1
-    prevloglik <- stuff$loglik
-    prev <- start
-    d <- -diag(length(betavec)) %*% stuff$grad # replaces Hessian with similar matrix that is negative definite
-    start <- prev + d
-    
-    # For lambda = 1
-    if (stuff.func(dat, start)$loglik > stuff.func(dat, prev)$loglik ) {
-      stuff <- stuff.func(dat, start) # log-lik, gradient, Hessian
-      res <- rbind(res, c(i, stuff$loglik, start))
-    } else {# For halving steps
-      
-      half_cur <- prev + (halves[subit])*d
-      
-      while (stuff.func(dat, half_cur)$loglik <= stuff.func(dat, prev)$loglik) {
-        subit <- subit + 1
-        half_cur <- prev + (halves[subit])*d
-      }
-      start <- half_cur
-      stuff <- stuff.func(dat, start) # log-lik, gradient, Hessian
-      res <- rbind(res, c(i, stuff$loglik, start))
-    }
-  }
-
-```
 
 
