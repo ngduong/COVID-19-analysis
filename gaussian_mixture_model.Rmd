@@ -1,0 +1,31 @@
+---
+title: "Gaussian Mixture Model"
+author: "Adeline Shin"
+date: "4/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(mixtools)
+```
+
+```{r}
+gaussian_algorithm = function(df) {
+  # Initial Guesses
+  mean_a = 0
+  mean_b = 0
+  mean_c = 0
+  var_a = 1
+  var_b = 1
+  var_c = 1
+  a = df$a
+  b = df$b
+  c = df$c
+  # Expectation Step
+  
+  # Minimization Step (Minimizing Loss)
+}
+```
+
