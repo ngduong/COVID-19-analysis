@@ -49,7 +49,7 @@ cor(df_raw)
 
 ```{r}
 df_filtered = df %>% 
-  dplyr::select(everything(), confirmed_cases, -x1, -fatalities)
+  dplyr::select(everything(), confirmed_cases, -fatalities)
 
 y = df_filtered %>% 
   pull(confirmed_cases)
@@ -62,7 +62,23 @@ x = df_filtered %>%
 dat = cbind(y, x)
 ```
 
-```{r, cache = TRUE}
+```{r, eval = FALSE}
+log_lik = function(cumsum = pull(dat, y), params = list(a = 1000, b = 2, c = 100)) {
+  dat %>% group_by(country_region, province_state)
+  t = 0
+  while (y > 0) {
+    t = t + 1
+  }
+  for (i in 1:n_distinct(pull(dat, country_region))) {
+    like[i] = params$a / (1 + exp(-params$b * (t - params$c)))
+    log_lik = log(like)
+    return(log_lik)
+}
+
+log_lik()
+```
+
+```{r, cache = TRUE, eval = FALSE}
 # logistic function
 
 logistic_stuff = function(x = pull(dat, x), y = pull(dat, y), params = list(a = 1000, b = 2, c = 100), func = log_lik) {
@@ -102,18 +118,42 @@ logistic_stuff()
   
 }
 ```
-```{r}
-log_lik = function(cumsum = pull(dat, y), params = list(a = 1000, b = 2, c = 100)) {
-  dat %>% group_by(country_region, province_state)
-  t = 0
-  while (y > 0) {
-    t = t + 1
-  }
-  like = params$a / (1 + exp(-params$b * (t - params$c)))
-  log_lik = log(like)
-  return(log_lik)
-}
 
-log_lik()
+## Clustering
+
+```{r, eval = FALSE}
+int_slope_df <- int_slope_dat %>% 
+  nest(data = year:ppp) %>%
+  mutate(
+    models = map(data, ~lm(ppp ~ year, data = .x)),
+    result = map(models, broom::tidy)
+  ) %>% 
+  select(county, result) %>% 
+  unnest(result) %>% 
+  select(county, term, estimate) %>% 
+  pivot_wider(
+    names_from = term,
+    values_from = estimate
+  ) %>% 
+  rename(int = "(Intercept)", slope = year)
+# Cluster data by intercept and slope #
+km_fit = 
+  kmeans(
+    int_slope_df[,c(2,3)]  %>% scale, 
+    centers = 3)
+int_slope_df =
+  broom::augment(km_fit, int_slope_df)
+# Create a ggplot of the pills data #
+pills_plot <- left_join(int_slope_dat, int_slope_df) %>% 
+  group_by(county) %>% 
+  ggplot(aes(x = year, y = ppp, color = .cluster, text = county)) + 
+  geom_point() + 
+  geom_path() +
+  scale_x_continuous(breaks = c(0, 1, 2, 3, 4, 5, 6), labels = c("2006", "2007", "2008", "2009", "2010", "2011", "2012")) +
+  theme(legend.position = "none") +
+  xlab("Year") +
+  ylab("Pills Bought Per Person")
+ggplotly(pills_plot, tooltip = "text")
 ```
+
 
