@@ -22,10 +22,10 @@ covid = read.csv(file.path(getwd(), "covid_final.csv")) %>%
 
 ## group data by country
 by_country = covid %>%
-  group_by(country_region) %>%
-  mutate(t = as.numeric(difftime(date, min(date), units = "days"))) %>%
-  group_by(country_region, t) %>%
-  summarise(confirmed_cases = sum(confirmed_cases), # group by date and take total 
+  dplyr::group_by(country_region) %>%
+  dplyr::mutate(t = as.numeric(difftime(date, min(date), units = "days"))) %>%
+  dplyr::group_by(country_region, t) %>%
+  dplyr::summarise(confirmed_cases = sum(confirmed_cases), # group by date and take total 
             fatalities = sum(fatalities))
 
 
