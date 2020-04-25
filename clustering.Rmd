@@ -42,40 +42,70 @@ Repeat steps 2 and 3 until k centers have been chosen.
 
 ```{r}
 #partition of data such that squared error between empirical mean and points in each cluster/partition is minimized
-km_func <- function(X, k){
-  p <- ncol(X)  # number of parameters
-  n <- nrow(X)  # number of observations
+km_func <- function(data, k){
+  p <- ncol(data)  # number of parameters
+  n <- nrow(data)  # number of observations
   diff = 1
   iter = 0
-  itermax = 100
+  itermax = 50
   while(diff > 1e-4 && iter <= itermax){
-    # initiation
+    #initial centroids
     if(iter == 0){
-      centroid = X[sample(nrow(X), k),]
+      centroid = data[sample(nrow(data), k),]
       centroid_mem = centroid
     }
+
+    #assign to cluster 
+    d = sapply(1:k, function(c) sapply(1:n, function(i) {sum((centroid[c,] - data[i,])^2)}))
     
-    # assign to cluster 
-    d = sapply(1:k, function(c) sapply(1:n, 
-                                       function(i) {sum((centroid[c,] - X[i,])^2)}))
     cluster = apply(d, 1, which.min)
     
-    # recalculate cluster 
+    #recalculate cluster 
     centroid = t(sapply(1:k, 
-                         function(c) {apply(X[cluster == c,], 2, mean)}
+                         function(c) {apply(data[cluster == c,], 2, mean)}
                          ))
     
-    #sum of euclidean distance 
+    #recalculate distance
     diff = sum((centroid - centroid_mem)^2)
     iter = iter + 1 
     centroid_mem = centroid
   }
   return(list(centroid = centroid, cluster = cluster))
 }
-# run K-means
+```
+
+```{r}
+#test on simulated data 
 km <- km_func(data, 3)
 colnames(data) = c("a","b","c")
-xx_new = cbind(data, cluster = km$cluster)
-plot_ly(x=xx_new[,1], y=xx_new[,2], z=xx_new[,3], type="scatter3d", mode="markers", color = xx_new[,4])
+data_new = cbind(data, cluster = km$cluster)
+plot_ly(x=data_new[,1], y=data_new[,2], z=data_new[,3], type="scatter3d", mode="markers", color = data_new[,4])
+```
+
+
+```{r}
+#import data
+param_df = read_csv("./parameter_estimates.csv")[,-1] %>% as.data.frame()
+
+#standardize data
+param_names = c("a","b","c")
+param_standard = NULL
+for (i in 2:4) {
+col = (param_df[,i] - mean(as.vector(param_df[,i])))/sd(as.vector(param_df[,i]))
+param_standard = cbind(param_standard, col)
+}
+
+# run K-means
+km <- km_func(param_standard, 3)
+param_standard = cbind(param_df$region, param_standard)
+colnames(param_standard) <- c("region","a","b","c")
+param_final = cbind(param_standard, cluster = km$cluster) %>% as_tibble() %>% 
+  mutate(a = as.numeric(a),
+         b = as.numeric(b),
+         c = as.numeric(c)) %>% group_by(cluster) %>% arrange(desc(cluster))
+
+#plot
+plot_ly(x=param_final$a, y=param_final$b, z=param_final$c, 
+        type="scatter3d", mode="markers", color = param_final$cluster)
 ```
 
