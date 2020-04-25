@@ -1,0 +1,80 @@
+---
+title: "task-2"
+author: "Ngoc Duong"
+date: "4/23/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plotly)
+```
+
+
+```{r}
+library(MASS)
+library(tidyverse)
+#fake data 
+set.seed(123123)
+Sigma = matrix(c(1, 0.5, 0.5,0.5,1,0.5,0.5, 0.5,1), ncol = 3, nrow = 3)
+x1 = mvrnorm(n = 200, mu = c(0 ,0, 0), Sigma)
+Sigma = matrix(c(2, 0.5, 0.5,0.5,2,0.5,0.5, 0.5,2), ncol = 3, nrow = 3)
+x2 = mvrnorm(n = 200, mu = c(1, 3, 2), Sigma)
+Sigma = matrix(c(3, 0.5, 0.5,0.5,3,0.5,0.5, 0.5,3), ncol = 3, nrow = 3)
+x3 = mvrnorm(n = 200, mu = c(4 ,1, -2), Sigma)
+xx =  rbind(x1, x2, x3)
+# Standardize data
+standardize = function(col) {
+  mean = mean(col)
+  stdev = sd(col)
+  return((col - mean)/stdev)
+}
+data = as.tibble(xx) %>% map_df(.x = ., standardize)
+```
+
+
+For each data point x, compute D(x), the distance between x and the nearest center that has already been chosen.
+Choose one new data point at random as a new center, using a weighted probability distribution where a point x is chosen with probability proportional to D(x)^2
+Repeat Steps 2 and 3 until k centers have been chosen.
+Now that the initial centers have been chosen, proceed using standard k-means clustering
+
+```{r}
+# finds partition such that squared error between empirical mean
+# and points in cluster is minimized over all k clusters
+km_func <- function(X, k){
+  p <- ncol(X)  # number of parameters
+  n <- nrow(X)  # number of observations
+  diff <- 1; iter <- 0; itermax <- 30
+  while(diff > 1e-4 && iter <= itermax){
+    # initiation
+    if(iter == 0){
+      centroid = X[sample(nrow(X), k),]
+      centroid_mem = centroid
+    }
+    
+    # assign to cluster 
+    d <- sapply(1:k, function(c) sapply(1:n, 
+      function(i) sum((centroid[c,] - X[i,])^2)))
+    cluster <- apply(d, 1, which.min)
+    
+    # recalculate cluster 
+    centroid <- t(sapply(1:k, function(c) 
+      apply(X[cluster == c,], 2, mean)))
+    
+    #sum of euclidean distance 
+    diff = sum((centroid - centroid_mem)^2)
+    iter = iter + 1 
+    centroid_mem = centroid
+  }
+  return(list(centroid = centroid, cluster = cluster))
+}
+# run K-means
+km <- km_func(xx, 3)
+colnames(xx) = c("a","b","c")
+xx_new = cbind(xx, cluster = km$cluster)
+plot_ly(x=xx_new[,1], y=xx_new[,2], z=xx_new[,3], type="scatter3d", mode="markers", color = xx_new[,4])
+```
+
