@@ -11,6 +11,7 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(plyr)
+library(directlabels)
 ```
 
 ```{r data}
@@ -193,7 +194,7 @@ c.seq = seq(0, 90, 1)
 param_df = NULL
 fitted_list <- list()
 
-for (i in country_reg[1:10]){
+for (i in country_reg[1:186]){
  param = fit_curve(by_country %>% filter(country_region == i), 
                       aseq = a.seq, bseq = b.seq, cseq = c.seq)
  fitted = logistic_pred(as.numeric(as.matrix(filter(by_country,country_region == i)[,2])),
@@ -204,11 +205,56 @@ for (i in country_reg[1:10]){
  fitted_list[[i]] <- fitted
 }
 
-param_df1 = tibble(region = country_reg[1:10], 
+param_df1 = tibble(region = country_reg[1:186], 
                    a = param_df[,1],
                    b = param_df[,2],
                    c = param_df[,3])
 param_df1
 fitted_list
+```
+
+Plotting Data
+```{r}
+list.names = names(fitted_list)
+
+lns = sapply(fitted_list, nrow)
+fitted_list = as.data.frame(do.call("rbind", fitted_list))
+fitted_list$group = rep(list.names, lns)
+
+ggplot(fitted_list, aes(x = x, y = y, colour = group)) +
+    theme_bw() +
+    geom_line(linetype = "dotted")
+
+plot(unlist(fitted_list), type = "n", xlim = c(1, max(sapply(fitted_list, length))), main = "Number of Cumulative COVID-19 Cases for All Countries", xlab = "Days Since First Case", ylab = "Number of Cases")
+mapply(lines, fitted_list, col = seq_along(fitted_list))
+
+```
+
+Trying with ggplot
+```{r}
+fitted_list_2 = as.data.frame(unlist(fitted_list)) %>% 
+  janitor::clean_names() %>% 
+  rownames_to_column(var = "country") %>% 
+  mutate(
+    t = as.numeric(gsub("[^[:digit:]]", "", country)),
+    region = gsub("[[:digit:]]","", country)) %>% 
+  select(region, t, cases = unlist_fitted_list)
+
+large_pop_list = c("China", "India", "US", "Indonesia", "Pakistan", "Brazil", "Nigeria", "Bangladesh", "Russia", "Mexico", "Japan", "Ethiopia", "Phillipines", "Egypt", "Vietnam", "Congo (Kinshasa)", "Turkey", "Iran", "Germany", "Thailand")
+
+next_countries = c("United Kingdom", "France", "Italy", "Tanzania", "South Africa", "Myanmar", "Kenya", "South Korea", "Colombia", "Spain", "Uganda", "Argentina", "Algeria", "Sudan", "Ukraine", "Iraq")
+  
+fitted_list_2 %>%
+  filter(region %in% large_pop_list) %>% 
+  ggplot(aes(x = t, y = cases)) +
+  geom_point(aes(color = region)) +
+  geom_dl(aes(label = region), method = list(dl.combine("last.points"), cex = 0.7)) +
+  labs(
+    title = "Cumulative COVID-19 Cases for Top 20 Countries in Population",
+    x = "Days After First Case",
+    y = "Cumulative Cases"
+  )
+
+ggsave("top_20_regions.jpg", width = 12, height = 8)
 ```
 
