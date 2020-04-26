@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(plyr)
 library(directlabels)
+library(countrycode)
 ```
 
 ```{r data}
@@ -213,24 +214,8 @@ param_df1
 fitted_list
 ```
 
-Plotting Data
-```{r}
-list.names = names(fitted_list)
-
-lns = sapply(fitted_list, nrow)
-fitted_list = as.data.frame(do.call("rbind", fitted_list))
-fitted_list$group = rep(list.names, lns)
-
-ggplot(fitted_list, aes(x = x, y = y, colour = group)) +
-    theme_bw() +
-    geom_line(linetype = "dotted")
-
-plot(unlist(fitted_list), type = "n", xlim = c(1, max(sapply(fitted_list, length))), main = "Number of Cumulative COVID-19 Cases for All Countries", xlab = "Days Since First Case", ylab = "Number of Cases")
-mapply(lines, fitted_list, col = seq_along(fitted_list))
-
-```
-
-Trying with ggplot
+# Plotting
+Plotting Top 20 Countries with Greatest Population
 ```{r}
 fitted_list_2 = as.data.frame(unlist(fitted_list)) %>% 
   janitor::clean_names() %>% 
@@ -242,19 +227,155 @@ fitted_list_2 = as.data.frame(unlist(fitted_list)) %>%
 
 large_pop_list = c("China", "India", "US", "Indonesia", "Pakistan", "Brazil", "Nigeria", "Bangladesh", "Russia", "Mexico", "Japan", "Ethiopia", "Phillipines", "Egypt", "Vietnam", "Congo (Kinshasa)", "Turkey", "Iran", "Germany", "Thailand")
 
-next_countries = c("United Kingdom", "France", "Italy", "Tanzania", "South Africa", "Myanmar", "Kenya", "South Korea", "Colombia", "Spain", "Uganda", "Argentina", "Algeria", "Sudan", "Ukraine", "Iraq")
-  
-fitted_list_2 %>%
+top_population = fitted_list_2 %>%
   filter(region %in% large_pop_list) %>% 
   ggplot(aes(x = t, y = cases)) +
-  geom_point(aes(color = region)) +
+  geom_path(aes(color = region)) +
   geom_dl(aes(label = region), method = list(dl.combine("last.points"), cex = 0.7)) +
   labs(
     title = "Cumulative COVID-19 Cases for Top 20 Countries in Population",
     x = "Days After First Case",
     y = "Cumulative Cases"
   )
+ggsave("top_20_regions.jpg", plot = top_population, width = 12, height = 8)
+```
 
-ggsave("top_20_regions.jpg", width = 12, height = 8)
+Plotting Top 20 Countries with Most Cases
+```{r}
+top_names = fitted_list_2 %>% 
+  group_by(region) %>% 
+  mutate(max_cases = max(cases)) %>% 
+  dplyr::select(region, max_cases) %>% 
+  distinct() %>% 
+  arrange(desc(max_cases)) %>% 
+  head(20) %>% 
+  dplyr::select(region)
+
+top_names = as.tibble(top_names)
+
+top_cases = fitted_list_2 %>%
+  filter(region %in% top_names$region) %>% 
+  ggplot(aes(x = t, y = cases)) +
+  geom_path(aes(color = region)) +
+  geom_dl(aes(label = region), method = list(dl.combine("last.points"), cex = 0.7)) +
+  labs(
+    title = "Cumulative COVID-19 Cases for Countries with Most Cases",
+    x = "Days After First Case",
+    y = "Cumulative Cases"
+  )
+ggsave("highest_cases.jpg", plot = top_cases, width = 12, height = 8)
+```
+
+Plotting Countries Where Total is Still Growing
+```{r}
+growing_df = fitted_list_2 %>% 
+  mutate(group = replicate(length(fitted_list_2$region), 0)) %>% 
+  group_by(region) %>% 
+  mutate(
+    max_value = max(cases),
+    next_value = sort(cases, partial = (length(region) - 1))[length(region) - 1],
+    derivative = (max_value - next_value) / ((next_value + max_value) / 2),
+    ) %>% 
+  dplyr::select(-next_value, -max_value)
+  
+for (i in 1:length(growing_df$region)) {
+  if (growing_df$derivative[i] == 0) {
+    growing_df$group[i] = "Not Growing"
+  } else if (growing_df$derivative[i] < 0.1) {
+    growing_df$group[i] = "Growing Slowly"
+  } else if (growing_df$derivative[i] < 0.2) {
+    growing_df$group[i] = "Growing Moderately"
+  } else {
+    growing_df$group[i] = "Growing Quickly"
+  }
+}
+
+growing_df$group = factor(growing_df$group, levels = c("Not Growing", "Growing Slowly", "Growing Moderately", "Growing Quickly"), ordered = TRUE)
+
+growing_df %>% 
+  ggplot(aes(x = t, y = cases)) +
+  geom_path(aes(color = region)) +
+  facet_grid(group ~ ., scales = "free") +
+  theme(legend.position = "none") +
+  geom_dl(aes(label = region), method = list(dl.combine("last.points"), cex = 0.7)) +
+  labs(
+    title = "Cumulative COVID-19 Cases for All Countries",
+    x = "Days Since First Case",
+    y = "Cumulative Cases (Grouped by Growth Rate)"
+  )
+```
+
+Plotting Countries by Continent
+```{r}
+continent_df = 
+  fitted_list_2 %>% 
+    mutate(
+      continent = countrycode(sourcevar = fitted_list_2[, "region"],
+                              origin = "country.name",
+                              destination = "continent")
+    )
+
+continent_df$continent[4320:4345] = "Europe"
+
+continent_df %>% 
+  ggplot(aes(x = t, y = cases)) +
+  geom_path(aes(color = region)) +
+  facet_grid(continent ~ ., scales = "free") +
+  theme(legend.position = "none") +
+  geom_dl(aes(label = region), method = list(dl.combine("last.points"), cex = 0.7)) +
+  labs(
+    title = "Cumulative COVID-19 Cases for All Countries",
+    x = "Days Since First Case",
+    y = "Cumulative Cases (Grouped by Continent)"
+  )
+ggsave("covid_19_continents.jpg", width = 12, height = 8)
+```
+
+Plotting Countries by Number of Cases
+```{r}
+number_df = fitted_list_2 %>% 
+  mutate(
+    group = replicate(length(fitted_list_2$cases), 0)
+  ) %>% 
+  group_by(region) %>% 
+  mutate(
+    log_cases = log10(cases),
+    max_log = max(log_cases)
+  ) %>% 
+  dplyr::select(-log_cases) %>% 
+  arrange(max_log) 
+
+for (i in 1:length(number_df$region)) {
+  if (number_df$max_log[i] < 2) {
+    number_df$group[i] = "0 - 99"
+  } else if (number_df$max_log[i] < log10(500)) {
+    number_df$group[i] = "100 - 499"
+  } else if (number_df$max_log[i] < 3) {
+    number_df$group[i] = "500 - 999"
+  } else if (number_df$max_log[i] < log10(5000)) {
+    number_df$group[i] = "1000 - 4999"
+  } else if (number_df$max_log[i] < 4) {
+    number_df$group[i] = "5000 - 9999"
+  } else if (number_df$max_log[i] < 5) {
+    number_df$group[i] = "10000 - 99999"
+  } else {
+    number_df$group[i] = "100000 +"
+  }
+}
+
+number_df$group = factor(number_df$group, levels = c("0 - 99", "100 - 499", "500 - 999", "1000 - 4999", "5000 - 9999", "10000 - 99999", "100000 +"), ordered = TRUE)
+
+number_df %>% 
+  ggplot(aes(x = t, y = cases)) +
+  geom_path(aes(color = region)) +
+  facet_grid(group ~ ., scales = "free") +
+  theme(legend.position = "none") +
+  geom_dl(aes(label = region), method = list(dl.combine("last.points"), cex = 0.7)) +
+  labs(
+    title = "Cumulative COVID-19 Cases for All Countries",
+    x = "Days Since First Case",
+    y = "Cumulative Cases (Grouped by Total)"
+  )
+ggsave("all_covid_cases.jpg", width = 12, height = 8)
 ```
 
