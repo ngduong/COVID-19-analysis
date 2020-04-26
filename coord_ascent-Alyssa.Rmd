@@ -303,6 +303,7 @@ growing_df %>%
     x = "Days Since First Case",
     y = "Cumulative Cases (Grouped by Growth Rate)"
   )
+ggsave("growth_group_plot.jpg", width = 12, height = 8)
 ```
 
 Plotting Countries by Continent
