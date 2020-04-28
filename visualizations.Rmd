@@ -14,7 +14,7 @@ library(countrycode)
 
 # Load Data
 ```{r}
-load("./predictions.RData")
+load("./curves.RData")
 ```
 
 # Plotting Original Data
@@ -67,7 +67,7 @@ ggsave("./visualizations/real_data_plotted.jpg", width = 12, height = 8)
 ```
 
 # Plotting Estimates
-Plotting Top 20 Countries with Greatest Population
+## Plotting Top 20 Countries with Greatest Population
 ```{r}
 fitted_list_2 = as.data.frame(unlist(fitted_list)) %>% 
   janitor::clean_names() %>% 
@@ -89,10 +89,11 @@ top_population = fitted_list_2 %>%
     x = "Days After First Case",
     y = "Cumulative Cases"
   )
-ggsave("top_20_regions.jpg", plot = top_population, width = 12, height = 8)
+
+ggsave("./visualizations/top_20_regions.jpg", plot = top_population, width = 12, height = 8)
 ```
 
-Plotting Top 20 Countries with Most Cases
+## Plotting Top 20 Countries with Most Cases
 ```{r}
 top_names = fitted_list_2 %>% 
   group_by(region) %>% 
@@ -115,34 +116,30 @@ top_cases = fitted_list_2 %>%
     x = "Days After First Case",
     y = "Cumulative Cases"
   )
-ggsave("highest_cases.jpg", plot = top_cases, width = 12, height = 8)
+
+ggsave("./visualizations/highest_cases.jpg", plot = top_cases, width = 12, height = 8)
 ```
 
-Plotting Countries Where Total is Still Growing
+## Plotting Countries Where Total is Still Growing
 ```{r}
 growing_df = fitted_list_2 %>% 
-  mutate(group = replicate(length(fitted_list_2$region), 0)) %>% 
-  group_by(region) %>% 
-  mutate(
-    max_value = max(cases),
-    next_value = sort(cases, partial = (length(region) - 1))[length(region) - 1],
-    derivative = (max_value - next_value) / ((next_value + max_value) / 2),
-    ) %>% 
-  dplyr::select(-next_value, -max_value)
+  full_join(param_df1, by = "region") 
   
 for (i in 1:length(growing_df$region)) {
-  if (growing_df$derivative[i] == 0) {
-    growing_df$group[i] = "Not Growing"
-  } else if (growing_df$derivative[i] < 0.1) {
+    if (growing_df$b[i] < 0.08) {
+    growing_df$group[i] = "Growing Very Slowly"
+  } else if (growing_df$b[i] < 0.15) {
     growing_df$group[i] = "Growing Slowly"
-  } else if (growing_df$derivative[i] < 0.2) {
+  } else if (growing_df$b[i] < 0.22) {
     growing_df$group[i] = "Growing Moderately"
-  } else {
+  } else if (growing_df$b[i] < 0.32) {
     growing_df$group[i] = "Growing Quickly"
+  } else {
+    growing_df$group[i] = "Growing Very Quickly"
   }
 }
 
-growing_df$group = factor(growing_df$group, levels = c("Not Growing", "Growing Slowly", "Growing Moderately", "Growing Quickly"), ordered = TRUE)
+growing_df$group = factor(growing_df$group, levels = c("Growing Very Slowly", "Growing Slowly", "Growing Moderately", "Growing Quickly", "Growing Very Quickly"), ordered = TRUE)
 
 growing_df %>% 
   ggplot(aes(x = t, y = cases)) +
@@ -155,10 +152,11 @@ growing_df %>%
     x = "Days Since First Case",
     y = "Cumulative Cases (Grouped by Growth Rate)"
   )
-ggsave("growth_group_plot.jpg", width = 12, height = 8)
+
+ggsave("./visualizations/growth_group_plot.jpg", width = 12, height = 8)
 ```
 
-Plotting Countries by Continent
+## Plotting Countries by Continent
 ```{r}
 continent_df = 
   fitted_list_2 %>% 
@@ -181,10 +179,10 @@ continent_df %>%
     x = "Days Since First Case",
     y = "Cumulative Cases (Grouped by Continent)"
   )
-ggsave("covid_19_continents.jpg", width = 12, height = 8)
+ggsave("./visualizations/covid_19_continents.jpg", width = 12, height = 8)
 ```
 
-Plotting Countries by Number of Cases
+## Plotting Countries by Number of Cases
 ```{r}
 number_df = fitted_list_2 %>% 
   mutate(
@@ -229,6 +227,54 @@ number_df %>%
     x = "Days Since First Case",
     y = "Cumulative Cases (Grouped by Total)"
   )
-ggsave("all_covid_cases.jpg", width = 12, height = 8)
+ggsave("./visualizations/all_covid_cases.jpg", width = 12, height = 8)
+```
+
+## Differences in Stay at Home Orders
+```{r}
+distancing_df = fitted_list_2 %>% 
+  filter(region == "US" | region == "China" | region == "Italy" | region == "Sweden") %>% 
+  mutate(population = rep(0, length(distancing_df$cases)))
+
+for (i in 1:length(distancing_df$cases)) {
+  if (distancing_df$region[i] == "US") {
+    distancing_df$population[i] = 328200000
+  } else if (distancing_df$region[i] == "China") {
+    distancing_df$population[i] = 1393000000
+  } else if (distancing_df$region[i] == "Italy" ) {
+    distancing_df$population[i] = 60360000
+  } else {distancing_df$population[i] = 10230000}
+}
+
+distancing_df = distancing_df %>% 
+  mutate(
+    percent_infected = cases / population
+  )
+
+highlights = unlist(data = c(distancing_df[14, ], distancing_df[286, ], distancing_df[214, ]))
+
+distancing_df %>% 
+  ggplot(aes(x = t, y = cases)) +
+  geom_path(aes(color = region)) +
+  geom_point(data = distancing_df[14,]) +
+  geom_point(data = distancing_df[286,]) +
+  geom_point(data = distancing_df[130,]) +
+  labs(
+    title = "Estimated Curves for Select Countries and Stay At Home Implementation Date",
+    x = "Days Since First Case (Black Dot Indicates Implementation of Social Distancing)",
+    y = "Cumulative Cases"
+  )
+
+distancing_df %>% 
+  ggplot(aes(x = t, y = percent_infected)) +
+  geom_path(aes(color = region)) +
+  geom_point(data = distancing_df[14,]) +
+  geom_point(data = distancing_df[286,]) +
+  geom_point(data = distancing_df[130,]) +
+  labs(
+    title = "Estimated Curves for Select Countries and Stay At Home Implementation Date",
+    x = "Days Since First Case (Black Dot Indicates Implementation of Social Distancing)",
+    y = "Cumulative Percentage Infected"
+  )
 ```
 
