@@ -107,31 +107,31 @@ fit_curve = function(data, aseq, bseq, cseq) {
 
 
 
-a.seq = seq(0, 1e6, 1e4)
-b.seq = seq(0, 1, 0.01)
-c.seq = seq(0, 90, 1)
-
-
-usa = by_country %>%
-  filter(country_region == "US")
-
-usa_curve = fit_curve(usa, aseq = a.seq, bseq = b.seq, cseq = c.seq)
-usa_fitted = logistic_pred(usa$t, usa_curve[1], usa_curve[2], usa_curve[3])
-plot(x = usa$t,
-     y = usa$confirmed_cases)
-lines(x = usa$t,
-      y = usa_fitted)
-
-
-china = by_country %>%
-  filter(country_region == "China")
-china_curve = fit_curve(china, aseq = a.seq, bseq = b.seq, cseq = c.seq)
-china_fitted = logistic_pred(seq(0, 89, 1), china_curve[1], china_curve[2], china_curve[3])
-
-plot(x = china$t,
-     y = china$confirmed_cases)
-lines(x = china$t,
-      y = china_fitted)
+# a.seq = seq(0, 1e6, 1e4)
+# b.seq = seq(0, 1, 0.01)
+# c.seq = seq(0, 90, 1)
+# 
+# 
+# usa = by_country %>%
+#   filter(country_region == "US")
+# 
+# usa_curve = fit_curve(usa, aseq = a.seq, bseq = b.seq, cseq = c.seq)
+# usa_fitted = logistic_pred(usa$t, usa_curve[1], usa_curve[2], usa_curve[3])
+# plot(x = usa$t,
+#      y = usa$confirmed_cases)
+# lines(x = usa$t,
+#       y = usa_fitted)
+# 
+# 
+# china = by_country %>%
+#   filter(country_region == "China")
+# china_curve = fit_curve(china, aseq = a.seq, bseq = b.seq, cseq = c.seq)
+# china_fitted = logistic_pred(seq(0, 89, 1), china_curve[1], china_curve[2], china_curve[3])
+# 
+# plot(x = china$t,
+#      y = china$confirmed_cases)
+# lines(x = china$t,
+#       y = china_fitted)
 # data = usa
 # start = c(a = 5e5, b = 0.4, c = 30)
 # #tol = 1e-10
@@ -189,7 +189,7 @@ Loop over countries
 
 ```{r}
 country_reg = by_country$country_region %>% unique() %>% as.vector()
-a.seq = seq(0, 1e6, 1e4)
+a.seq = c(0, 100, 500, 1e3, seq(1e4, 1e6, 1e4))
 b.seq = seq(0, 1, 0.01)
 c.seq = seq(0, 90, 1)
 param_df = NULL
@@ -210,6 +210,4 @@ param_df1 = tibble(region = country_reg[1:186],
                    a = param_df[,1],
                    b = param_df[,2],
                    c = param_df[,3])
-param_df1
-fitted_list
 ```
