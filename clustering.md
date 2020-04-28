@@ -1,22 +1,9 @@
----
-title: "task-2"
-author: "Ngoc Duong"
-date: "4/23/2020"
-output: github_document
-editor_options: 
-  chunk_output_type: console
----
+task-2
+================
+Ngoc Duong
+4/23/2020
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
-library(plotly)
-library(mvtnorm)
-library(MASS)
-```
-
-
-```{r}
+``` r
 #fake data 
 set.seed(123123)
 Sigma1 = matrix(c(1, 0.5, 0.5,0.5,1,0.5,0.5, 0.5,1), ncol = 3, nrow = 3)
@@ -35,12 +22,17 @@ standardize = function(col) {
 data = as_tibble(data) %>% map_df(.x = ., standardize)
 ```
 
-**K-means**
-For each data point x, compute d, the distance between x and the nearest center that has already been chosen.
-Choose one new data point at random as a new center, using a weighted probability distribution where a point x is chosen with probability proportional to d^2
-Repeat steps 2 and 3 until k centers have been chosen.
+    ## Warning: `as_tibble.matrix()` requires a matrix with column names or a `.name_repair` argument. Using compatibility `.name_repair`.
+    ## This warning is displayed once per session.
 
-```{r}
+**K-means** For each data point x, compute d, the distance between x and
+the nearest center that has already been chosen. Choose one new data
+point at random as a new center, using a weighted probability
+distribution where a point x is chosen with probability proportional to
+d^2 Repeat steps 2 and 3 until k centers have been
+chosen.
+
+``` r
 #partition of data such that squared error between empirical mean and points in each cluster/partition is minimized
 km_func <- function(data, k){
   p <- ncol(data)  # number of parameters
@@ -74,7 +66,7 @@ km_func <- function(data, k){
 }
 ```
 
-```{r}
+``` r
 #test on simulated data 
 set.seed(3)
 km_sim <- km_func(data, 3)
@@ -89,18 +81,39 @@ data_true = data %>% mutate(cluster = c(rep(1,200),rep(2,200),rep(3,200)))
 table(km_sim$cluster,data_true$cluster)
 ```
 
-Misclassification is not too high, reason for misclassification is likely due to MVN RV's are actually kind of close to each other.
+    ##    
+    ##       1   2   3
+    ##   1   0   1 170
+    ##   2  12 161   9
+    ##   3 188  38  21
 
-```{r eval = FALSE}
+Misclassification is not too high, reason for misclassification is
+likely due to MVN RV’s are actually kind of close to each
+other.
+
+``` r
 plot_ly(x=data_new[,1], y=data_new[,2], z=data_new[,3], type="scatter3d", mode="markers", color = data_new[,4])
 ```
 
-Run k-means algorithm on estimated parameters 
+Run k-means algorithm on estimated parameters
 
-```{r}
+``` r
 #import data
 param_df = read_csv("./parameter_estimates.csv")[,-1] %>% as.data.frame()
+```
 
+    ## Warning: Missing column names filled in: 'X1' [1]
+
+    ## Parsed with column specification:
+    ## cols(
+    ##   X1 = col_double(),
+    ##   region = col_character(),
+    ##   a = col_double(),
+    ##   b = col_double(),
+    ##   c = col_double()
+    ## )
+
+``` r
 #standardize data
 param_names = c("a_std","b_std","c_std")
 param_standard = NULL
@@ -131,7 +144,7 @@ param_km5_final = cbind(param_both, cluster = km_5$cluster) %>%
   group_by(cluster) %>% arrange(desc(cluster))
 ```
 
-```{r eval = FALSE}
+``` r
 #plot on standardized data
 plot_ly(x=param_km3_final$a_std, y=param_km3_final$b_std, z=param_km3_final$c_std, 
         type="scatter3d", mode="markers", color = param_km3_final$cluster)
@@ -155,7 +168,7 @@ plot_ly(x=param_km5_final$a, y=param_km5_final$b, z=param_km5_final$c,
 
 **EM algorithm for Gaussian mixtures**
 
-```{r}
+``` r
 gmm_func <- function(X, k){
   #setting
   data <- as.matrix(X) 
@@ -205,30 +218,44 @@ gmm_func <- function(X, k){
 }
 ```
 
-
 Test on simulated data
-```{r}
+
+``` r
 set.seed(3)
 gmm_test = gmm_func(data, 3)
 sim_data_gmm = cbind(data,gmm_test$cluster) %>% dplyr::select(-row) %>% rename(cluster = col)
 
 #see clustering performance -- ideally 200 for each cluster
 table(gmm_test$cluster[,2]) #201, 211, 188 -- frequency seems ok
+```
 
+    ## 
+    ##   1   2   3 
+    ## 201 188 211
+
+``` r
 #check misclassification
 table(gmm_test$cluster[,2],data_true$cluster)
 ```
 
-Some misclassification (clustered into incorrect underlying distributions), but misclassification rate is not too high (10%) so it's ok 
+    ##    
+    ##       1   2   3
+    ##   1   2   3 196
+    ##   2  12 174   2
+    ##   3 186  23   2
 
-```{r eval= FALSE}
+Some misclassification (clustered into incorrect underlying
+distributions), but misclassification rate is not too high (10%) so it’s
+ok
+
+``` r
 plot_ly(x=sim_data_gmm$a, y=sim_data_gmm$b, z=sim_data_gmm$c, 
         type="scatter3d", mode="markers", color = sim_data_gmm$cluster)
 ```
 
 Now, we can try run GMM on estimated parameter data, picking k = 3
 
-```{r eval = FALSE}
+``` r
 set.seed(7)
 param_gmm <- gmm_func(param_standard, 3)
 
@@ -249,7 +276,7 @@ param_gmm_final %>% group_by(cluster) %>%
   knitr::kable()
 ```
 
-```{r eval = FALSE}
+``` r
 #plot on standardized data
 plot_ly(x=param_gmm_final$a_std, y=param_gmm_final$b_std, z=param_gmm_final$c_std, 
         type="scatter3d", mode="markers", color = param_gmm_final$cluster)
@@ -258,4 +285,3 @@ plot_ly(x=param_gmm_final$a_std, y=param_gmm_final$b_std, z=param_gmm_final$c_st
 plot_ly(x=param_gmm_final$a, y=param_gmm_final$b, z=param_gmm_final$c, 
         type="scatter3d", mode="markers", color = param_gmm_final$cluster)
 ```
-
