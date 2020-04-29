@@ -3,6 +3,12 @@ task-2
 Ngoc Duong
 4/23/2020
 
+Load curves.Rdata
+
+``` r
+load("./curves.RData")
+```
+
 ``` r
 #fake data 
 set.seed(123123)
@@ -78,14 +84,14 @@ data_new = cbind(data, cluster = km_sim$cluster)
 data_true = data %>% mutate(cluster = c(rep(1,200),rep(2,200),rep(3,200)))
 
 #check misclassification 
-table(km_sim$cluster,data_true$cluster)
+table(km_sim$cluster,data_true$cluster) %>% knitr::kable()
 ```
 
-    ##    
-    ##       1   2   3
-    ##   1   0   1 170
-    ##   2  12 161   9
-    ##   3 188  38  21
+|   1 |   2 |   3 |
+| --: | --: | --: |
+|   0 |   1 | 170 |
+|  12 | 161 |   9 |
+| 188 |  38 |  21 |
 
 Misclassification is not too high, reason for misclassification is
 likely due to MVN RV’s are actually kind of close to each
@@ -99,21 +105,8 @@ Run k-means algorithm on estimated parameters
 
 ``` r
 #import data
-param_df = read_csv("./parameter_estimates.csv")[,-1] %>% as.data.frame()
-```
+param_df = param_df1 %>% as.data.frame()
 
-    ## Warning: Missing column names filled in: 'X1' [1]
-
-    ## Parsed with column specification:
-    ## cols(
-    ##   X1 = col_double(),
-    ##   region = col_character(),
-    ##   a = col_double(),
-    ##   b = col_double(),
-    ##   c = col_double()
-    ## )
-
-``` r
 #standardize data
 param_names = c("a_std","b_std","c_std")
 param_standard = NULL
@@ -191,7 +184,7 @@ gmm_func <- function(X, k){
     # E-step: Evaluate posterior probability, gamma
     gamma <- c()
     for(j in 1:k){
-      gamma2 <- apply(data,1, emdbook::dmvnorm, mu[j,], covList[[j]])
+      gamma2 <- apply(data,1, mvtnorm::dmvnorm, mu[j,], covList[[j]])
       gamma <- cbind(gamma, gamma2)
     }
     
@@ -262,6 +255,8 @@ param_gmm <- gmm_func(param_standard, 3)
 #prepare data 
 param_gmm_final = cbind(param_both, cluster= param_gmm$cluster[,2]) %>%
   group_by(cluster) %>% arrange(desc(cluster))
+
+table(param_gmm_final$cluster) %>% knitr::kable()
 
 param_gmm_final %>% group_by(cluster) %>% 
   summarise(a_mean = mean(a),

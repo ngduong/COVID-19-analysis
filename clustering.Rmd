@@ -15,6 +15,10 @@ library(mvtnorm)
 library(MASS)
 ```
 
+Load curves.Rdata
+```{r}
+load("./curves.RData")
+```
 
 ```{r}
 #fake data 
@@ -86,7 +90,7 @@ data_new = cbind(data, cluster = km_sim$cluster)
 data_true = data %>% mutate(cluster = c(rep(1,200),rep(2,200),rep(3,200)))
 
 #check misclassification 
-table(km_sim$cluster,data_true$cluster)
+table(km_sim$cluster,data_true$cluster) %>% knitr::kable()
 ```
 
 Misclassification is not too high, reason for misclassification is likely due to MVN RV's are actually kind of close to each other.
@@ -99,7 +103,7 @@ Run k-means algorithm on estimated parameters
 
 ```{r}
 #import data
-param_df = read_csv("./parameter_estimates.csv")[,-1] %>% as.data.frame()
+param_df = param_df1 %>% as.data.frame()
 
 #standardize data
 param_names = c("a_std","b_std","c_std")
@@ -178,7 +182,7 @@ gmm_func <- function(X, k){
     # E-step: Evaluate posterior probability, gamma
     gamma <- c()
     for(j in 1:k){
-      gamma2 <- apply(data,1, emdbook::dmvnorm, mu[j,], covList[[j]])
+      gamma2 <- apply(data,1, mvtnorm::dmvnorm, mu[j,], covList[[j]])
       gamma <- cbind(gamma, gamma2)
     }
     
@@ -236,6 +240,8 @@ param_gmm <- gmm_func(param_standard, 3)
 param_gmm_final = cbind(param_both, cluster= param_gmm$cluster[,2]) %>%
   group_by(cluster) %>% arrange(desc(cluster))
 
+table(param_gmm_final$cluster) %>% knitr::kable()
+
 param_gmm_final %>% group_by(cluster) %>% 
   summarise(a_mean = mean(a),
             b_mean = mean(b),
@@ -258,4 +264,7 @@ plot_ly(x=param_gmm_final$a_std, y=param_gmm_final$b_std, z=param_gmm_final$c_st
 plot_ly(x=param_gmm_final$a, y=param_gmm_final$b, z=param_gmm_final$c, 
         type="scatter3d", mode="markers", color = param_gmm_final$cluster)
 ```
+
+
+
 
