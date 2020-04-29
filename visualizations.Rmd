@@ -234,7 +234,7 @@ ggsave("./visualizations/all_covid_cases.jpg", width = 12, height = 8)
 ```{r}
 distancing_df = fitted_list_2 %>% 
   filter(region == "US" | region == "China" | region == "Italy" | region == "Sweden") %>% 
-  mutate(population = rep(0, length(distancing_df$cases)))
+  mutate(population = rep(0, length(cases)))
 
 for (i in 1:length(distancing_df$cases)) {
   if (distancing_df$region[i] == "US") {
@@ -265,6 +265,8 @@ distancing_df %>%
     y = "Cumulative Cases"
   )
 
+ggsave("./visualizations/social_distancing.jpg", width = 12, height = 8)
+
 distancing_df %>% 
   ggplot(aes(x = t, y = percent_infected)) +
   geom_path(aes(color = region)) +
@@ -276,5 +278,54 @@ distancing_df %>%
     x = "Days Since First Case (Black Dot Indicates Implementation of Social Distancing)",
     y = "Cumulative Percentage Infected"
   )
+
+ggsave("./visualizations/social_distancing_percentage.jpg", width = 12, height = 8)
+```
+
+# Plotting Clustering Results
+## K means Clustering
+```{r}
+kmeans_df = read_csv("./param_km4_final.csv")
+
+kmeans_graphing_df = fitted_list_2 %>% 
+  left_join(kmeans_df, by = "region") %>% 
+  dplyr::select(region, t, cases, cluster)
+
+kmeans_graphing_df %>% 
+  ggplot(aes(x = t, y = cases)) +
+  geom_path(aes(color = region)) +
+  facet_grid(cluster ~ ., scales = "free") +
+  theme(legend.position = "none") +
+  geom_dl(aes(label = region), method = list(dl.combine("last.points"), cex = 0.7)) +
+  labs(
+    title = "Cumulative COVID-19 Cases Grouped by K-Means Clustering",
+    x = "Days Since First Case",
+    y = "Cumulative Cases"
+  )
+
+ggsave("./visualizations/kmeans_graph.jpg", width = 12, height = 8)
+```
+
+## Gaussian Clustering
+```{r}
+gmm_df = read_csv("./param_gmm_final.csv")
+
+gmm_graphing_df = fitted_list_2 %>% 
+  left_join(gmm_df, by = "region") %>% 
+  dplyr::select(region, t, cases, cluster)
+
+gmm_graphing_df %>% 
+  ggplot(aes(x = t, y = cases)) +
+  geom_path(aes(color = region)) +
+  facet_grid(cluster ~ ., scales = "free") +
+  theme(legend.position = "none") +
+  geom_dl(aes(label = region), method = list(dl.combine("last.points"), cex = 0.7)) +
+  labs(
+    title = "Cumulative COVID-19 Cases Grouped by Gaussian Mixture Model Clustering",
+    x = "Days Since First Case",
+    y = "Cumulative Cases"
+  )
+
+ggsave("./visualizations/gmm_graph.jpg", width = 12, height = 8)
 ```
 
