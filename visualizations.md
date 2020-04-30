@@ -1,25 +1,17 @@
----
-title: "Visualizations"
-author: "Adeline Shin"
-date: "4/26/2020"
-output: github_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
-library(directlabels)
-library(countrycode)
-library(gghighlight)
-```
+Visualizations
+================
+Adeline Shin
+4/26/2020
 
 # Load Data
-```{r}
+
+``` r
 load("./curves.RData")
 ```
 
 # Plotting Original Data
-```{r}
+
+``` r
 real_df = by_country %>% 
   ungroup(country_region) %>% 
   mutate(
@@ -64,12 +56,19 @@ real_df %>%
     x = "Days Since First Case",
     y = "Cumulative Cases (Grouped by Total)"
   )
+```
+
+![](visualizations_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+
+``` r
 ggsave("./visualizations/real_data_plotted.jpg", width = 12, height = 8)
 ```
 
 # Plotting Estimates
+
 ## Plotting Top 20 Countries with Greatest Population
-```{r}
+
+``` r
 fitted_list_2 = as.data.frame(unlist(fitted_list)) %>% 
   janitor::clean_names() %>% 
   rownames_to_column(var = "country") %>% 
@@ -95,7 +94,8 @@ ggsave("./visualizations/top_20_regions.jpg", plot = top_population, width = 12,
 ```
 
 ## Plotting Top 20 Countries with Most Cases
-```{r}
+
+``` r
 top_names = fitted_list_2 %>% 
   group_by(region) %>% 
   mutate(max_cases = max(cases)) %>% 
@@ -106,7 +106,12 @@ top_names = fitted_list_2 %>%
   dplyr::select(region)
 
 top_names = as.tibble(top_names)
+```
 
+    ## Warning: `as.tibble()` is deprecated, use `as_tibble()` (but mind the new semantics).
+    ## This warning is displayed once per session.
+
+``` r
 top_cases = fitted_list_2 %>%
   filter(region %in% top_names$region) %>% 
   ggplot(aes(x = t, y = cases)) +
@@ -122,7 +127,8 @@ ggsave("./visualizations/highest_cases.jpg", plot = top_cases, width = 12, heigh
 ```
 
 ## Plotting Countries Where Total is Still Growing
-```{r}
+
+``` r
 growing_df = fitted_list_2 %>% 
   full_join(param_df1, by = "region") 
   
@@ -153,12 +159,17 @@ growing_df %>%
     x = "Days Since First Case",
     y = "Cumulative Cases (Grouped by Growth Rate)"
   )
+```
 
+![](visualizations_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
+``` r
 ggsave("./visualizations/growth_group_plot.jpg", width = 12, height = 8)
 ```
 
 ## Plotting Countries by Continent
-```{r}
+
+``` r
 continent_df = 
   fitted_list_2 %>% 
     mutate(
@@ -166,7 +177,11 @@ continent_df =
                               origin = "country.name",
                               destination = "continent")
     )
+```
 
+    ## Warning in countrycode(sourcevar = fitted_list_2[, "region"], origin = "country.name", : Some values were not matched unambiguously: Diamond Princess, Kosovo, MS Zaandam
+
+``` r
 continent_df$continent[4320:4345] = "Europe"
 
 continent_df %>% 
@@ -180,11 +195,17 @@ continent_df %>%
     x = "Days Since First Case",
     y = "Cumulative Cases (Grouped by Continent)"
   )
+```
+
+![](visualizations_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+``` r
 ggsave("./visualizations/covid_19_continents.jpg", width = 12, height = 8)
 ```
 
 ## Plotting Countries by Number of Cases
-```{r}
+
+``` r
 number_df = fitted_list_2 %>% 
   mutate(
     group = replicate(length(fitted_list_2$cases), 0)
@@ -228,11 +249,17 @@ number_df %>%
     x = "Days Since First Case",
     y = "Cumulative Cases (Grouped by Total)"
   )
+```
+
+![](visualizations_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+``` r
 ggsave("./visualizations/all_covid_cases.jpg", width = 12, height = 8)
 ```
 
 ## Differences in Stay at Home Orders
-```{r}
+
+``` r
 distancing_df = fitted_list_2 %>% 
   filter(region == "US" | region == "China" | region == "Italy" | region == "Sweden") %>% 
   mutate(population = rep(0, length(cases)))
@@ -265,7 +292,11 @@ distancing_df %>%
     x = "Days Since First Case (Black Dot Indicates Implementation of Social Distancing)",
     y = "Cumulative Cases"
   )
+```
 
+![](visualizations_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+``` r
 ggsave("./visualizations/social_distancing.jpg", width = 12, height = 8)
 
 distancing_df %>% 
@@ -279,13 +310,19 @@ distancing_df %>%
     x = "Days Since First Case (Dot Indicates Implementation of Social Distancing)",
     y = "Cumulative Percentage Infected"
   )
+```
 
+![](visualizations_files/figure-gfm/unnamed-chunk-8-2.png)<!-- -->
+
+``` r
 ggsave("./visualizations/social_distancing_percentage.jpg", width = 12, height = 8)
 ```
 
 # Plotting Clustering Results
+
 ## K means Clustering
-```{r}
+
+``` r
 kmeans_df = read_csv("./param_km3_final.csv") %>% 
   group_by(cluster) %>% 
   mutate(
@@ -293,7 +330,24 @@ kmeans_df = read_csv("./param_km3_final.csv") %>%
     mean_b = round(mean(b), digits = 2),
     mean_c = round(mean(c), digits = 2)
   )
+```
 
+    ## Warning: Missing column names filled in: 'X1' [1]
+
+    ## Parsed with column specification:
+    ## cols(
+    ##   X1 = col_double(),
+    ##   a_std = col_double(),
+    ##   b_std = col_double(),
+    ##   c_std = col_double(),
+    ##   region = col_character(),
+    ##   a = col_double(),
+    ##   b = col_double(),
+    ##   c = col_double(),
+    ##   cluster = col_double()
+    ## )
+
+``` r
 kmeans_graphing_df = fitted_list_2 %>% 
   left_join(kmeans_df, by = "region") %>% 
   dplyr::select(region, t, cases, cluster)
@@ -311,12 +365,17 @@ kmeans_graphing_df %>%
     x = "Days Since First Case",
     y = "Cumulative Cases Grouped by Cluster"
   )
+```
 
+![](visualizations_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
 ggsave("./visualizations/kmeans_graph.jpg", width = 12, height = 12)
 ```
 
 ## Gaussian Clustering
-```{r}
+
+``` r
 gmm_df = read_csv("./param_gmm_final.csv") %>% 
   group_by(cluster) %>% 
   mutate(
@@ -324,7 +383,24 @@ gmm_df = read_csv("./param_gmm_final.csv") %>%
     mean_b = round(mean(b), digits = 2),
     mean_c = round(mean(c), digits = 2)
   )
+```
 
+    ## Warning: Missing column names filled in: 'X1' [1]
+
+    ## Parsed with column specification:
+    ## cols(
+    ##   X1 = col_double(),
+    ##   a_std = col_double(),
+    ##   b_std = col_double(),
+    ##   c_std = col_double(),
+    ##   region = col_character(),
+    ##   a = col_double(),
+    ##   b = col_double(),
+    ##   c = col_double(),
+    ##   cluster = col_double()
+    ## )
+
+``` r
 gmm_graphing_df = fitted_list_2 %>% 
   left_join(gmm_df, by = "region") %>% 
   dplyr::select(region, t, cases, cluster)
@@ -343,7 +419,10 @@ gmm_graphing_df %>%
     x = "Days Since First Case",
     y = "Cumulative Cases Grouped by Cluster"
   )
-
-ggsave("./visualizations/gmm_graph.jpg", width = 12, height = 12)
 ```
 
+![](visualizations_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+``` r
+ggsave("./visualizations/gmm_graph.jpg", width = 12, height = 12)
+```
