@@ -13,6 +13,7 @@ library(tidyverse)
 library(plotly)
 library(mvtnorm)
 library(MASS)
+library(patchwork)
 ```
 
 Load curves.Rdata
@@ -185,6 +186,27 @@ param_km4_final %>% group_by(cluster) %>%
   knitr::kable()
 ```
 
+Grouped boxplots of a, b, and c for 3 clusters (k = 3)
+
+```{r}
+a = param_km3_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = a, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + 
+  theme(legend.position = "none", axis.title.x=element_blank()) 
+
+b = param_km3_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = b, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + labs(fill = "Cluster") + 
+  theme(legend.position = "bottom", axis.title.x=element_blank())
+  
+c = param_km3_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = c, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + 
+  theme(legend.position = "none", axis.title.x=element_blank())
+
+a+b+c
+```
+
 
 **EM algorithm for Gaussian mixtures**
 
@@ -323,6 +345,26 @@ plot_ly(x=param_gmm4_final$a, y=param_gmm4_final$b, z=param_gmm4_final$c,
         type="scatter3d", mode="markers", color = param_gmm4_final$cluster)
 ```
 
+Grouped boxplots of a, b, and c for 3 clusters (k = 3)
+
+```{r}
+d = param_gmm_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = a, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + 
+  theme(legend.position = "none", axis.title.x=element_blank()) 
+
+e = param_gmm_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = b, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + labs(fill = "Cluster") + 
+  theme(legend.position = "bottom", axis.title.x=element_blank())
+  
+f = param_gmm_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = c, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + 
+  theme(legend.position = "none", axis.title.x=element_blank())
+
+d+e+f
+```
 
 
 

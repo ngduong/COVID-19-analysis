@@ -202,6 +202,29 @@ param_km4_final %>% group_by(cluster) %>%
 |       3 |  12267.045 | 0.1231818 | 36.44250 |  200000 |   0.20 | 61.16436 |    100 |   0.06 |  0.0000783 |
 |       4 |  16335.135 | 0.0822973 | 73.81448 |  210000 |   0.19 | 89.99994 |    100 |   0.03 | 51.2673241 |
 
+Grouped boxplots of a, b, and c for 3 clusters (k = 3)
+
+``` r
+a = param_km3_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = a, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + 
+  theme(legend.position = "none", axis.title.x=element_blank()) 
+
+b = param_km3_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = b, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + labs(fill = "Cluster") + 
+  theme(legend.position = "bottom", axis.title.x=element_blank())
+  
+c = param_km3_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = c, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + 
+  theme(legend.position = "none", axis.title.x=element_blank())
+
+a+b+c
+```
+
+![](clustering_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
 **EM algorithm for Gaussian mixtures**
 
 ``` r
@@ -382,3 +405,26 @@ plot_ly(x=param_gmm_final$a, y=param_gmm_final$b, z=param_gmm_final$c,
 plot_ly(x=param_gmm4_final$a, y=param_gmm4_final$b, z=param_gmm4_final$c, 
         type="scatter3d", mode="markers", color = param_gmm4_final$cluster)
 ```
+
+Grouped boxplots of a, b, and c for 3 clusters (k = 3)
+
+``` r
+d = param_gmm_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = a, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + 
+  theme(legend.position = "none", axis.title.x=element_blank()) 
+
+e = param_gmm_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = b, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + labs(fill = "Cluster") + 
+  theme(legend.position = "bottom", axis.title.x=element_blank())
+  
+f = param_gmm_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = c, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + 
+  theme(legend.position = "none", axis.title.x=element_blank())
+
+d+e+f
+```
+
+![](clustering_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
