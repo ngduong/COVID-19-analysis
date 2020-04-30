@@ -84,6 +84,7 @@ real_df %>%
 ggsave("./visualizations/real_data_plotted.jpg", width = 12, height = 8)
 ```
 
+
 # Plotting Estimates
 ## Plotting Top 20 Countries with Greatest Population
 ```{r}
@@ -110,6 +111,30 @@ top_population = fitted_list_2 %>%
 
 ggsave("./visualizations/top_20_regions.jpg", plot = top_population, width = 12, height = 8)
 ```
+
+## Comparison of Real and Estimated Data
+```{r}
+comparison_df = by_country %>% 
+  rename(region = country_region) %>% 
+  dplyr::select(-fatalities) %>% 
+  left_join(fitted_list_2, by = c("region", "t")) %>% 
+  rename(estimated_cases = cases) %>% 
+  filter(region == "US" | region == "China" | region == "Italy" | region == "Iran") %>% 
+  pivot_longer(confirmed_cases:estimated_cases, names_to = "data_type")
+
+comparison_df %>% 
+  ggplot(aes(x = t, y = value)) +
+  geom_path(aes(color = data_type)) +
+  facet_wrap(region ~ ., scale = "free", nrow = 2) +
+  labs(
+    title = "Real Data vs. Estimated Data from Algorithm for Select Countries",
+    x = "Days Since First Case",
+    y = "Number of Cumulative Cases"
+  )
+
+ggsave("./visualizations/comparison_graph.jpg", width = 12, height = 8)
+```
+
 
 ## Plotting Top 20 Countries with Most Cases
 ```{r}
