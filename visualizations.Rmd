@@ -2,7 +2,7 @@
 title: "Visualizations"
 author: "Adeline Shin"
 date: "4/26/2020"
-output: github_document
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -11,6 +11,23 @@ library(tidyverse)
 library(directlabels)
 library(countrycode)
 library(gghighlight)
+library(plotly)
+library(viridis)
+knitr::opts_chunk$set(
+	echo = TRUE,
+	warning = FALSE,
+	cache = TRUE,
+	fig.width = 8, 
+  fig.height = 6,
+  out.width = "90%"
+)
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
 # Load Data
@@ -315,6 +332,21 @@ kmeans_graphing_df %>%
 ggsave("./visualizations/kmeans_graph.jpg", width = 12, height = 12)
 ```
 
+```{r}
+kmeans_plot = kmeans_graphing_df %>% 
+  ggplot(aes(x = t, y = cases, color = cluster, text = region)) +
+  geom_path() +
+  theme(legend.position = "none") +
+  labs(
+    title = "Cumulative COVID-19 Cases Grouped by K-Means Clustering",
+    x = "Days Since First Case",
+    y = "Cumulative Cases Grouped by Cluster"
+  )
+
+ggplotly(kmeans_plot, tooltip = "text")
+```
+
+
 ## Gaussian Clustering
 ```{r}
 gmm_df = read_csv("./param_gmm_final.csv") %>% 
@@ -345,5 +377,19 @@ gmm_graphing_df %>%
   )
 
 ggsave("./visualizations/gmm_graph.jpg", width = 12, height = 12)
+```
+
+```{r}
+gmm_plot = gmm_graphing_df %>% 
+  ggplot(aes(x = t, y = cases, color = cluster, text = region)) +
+  geom_path() +
+  theme(legend.position = "none") +
+  labs(
+    title = "Cumulative COVID-19 Cases Grouped by Gaussian Mixture Model Clustering",
+    x = "Days Since First Case",
+    y = "Cumulative Cases Grouped by Cluster"
+  )
+
+ggplotly(gmm_plot, tooltip = "text")
 ```
 
