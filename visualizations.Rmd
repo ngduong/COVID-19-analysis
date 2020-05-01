@@ -13,6 +13,9 @@ library(countrycode)
 library(gghighlight)
 library(plotly)
 library(viridis)
+library(knitr)
+library(kableExtra)
+
 knitr::opts_chunk$set(
 	echo = TRUE,
 	warning = FALSE,
@@ -233,36 +236,36 @@ number_df = fitted_list_2 %>%
   ) %>% 
   group_by(region) %>% 
   mutate(
-    log_cases = log10(cases),
-    max_log = max(log_cases)
+    max_cases = max(cases)
   ) %>% 
-  dplyr::select(-log_cases) %>% 
-  arrange(max_log) 
+  arrange(max_cases) 
 
 for (i in 1:length(number_df$region)) {
-  if (number_df$max_log[i] < 2) {
-    number_df$group[i] = "0 - 99"
-  } else if (number_df$max_log[i] < log10(500)) {
+  if (number_df$max_cases[i] < 50) {
+    number_df$group[i] = "0 - 49"
+  } else if (number_df$max_cases[i] < 100) {
+    number_df$group[i] = "50 - 99"
+  } else if (number_df$max_cases[i] < 500) {
     number_df$group[i] = "100 - 499"
-  } else if (number_df$max_log[i] < 3) {
+  } else if (number_df$max_cases[i] < 1000) {
     number_df$group[i] = "500 - 999"
-  } else if (number_df$max_log[i] < log10(5000)) {
+  } else if (number_df$max_cases[i] < 5000) {
     number_df$group[i] = "1000 - 4999"
-  } else if (number_df$max_log[i] < 4) {
+  } else if (number_df$max_cases[i] < 10000) {
     number_df$group[i] = "5000 - 9999"
-  } else if (number_df$max_log[i] < 5) {
+  } else if (number_df$max_cases[i] < 100000) {
     number_df$group[i] = "10000 - 99999"
   } else {
     number_df$group[i] = "100000 +"
   }
 }
 
-number_df$group = factor(number_df$group, levels = c("0 - 99", "100 - 499", "500 - 999", "1000 - 4999", "5000 - 9999", "10000 - 99999", "100000 +"), ordered = TRUE)
+number_df$group = factor(number_df$group, levels = c("0 - 49", "50 - 99", "100 - 499", "500 - 999", "1000 - 4999", "5000 - 9999", "10000 - 99999", "100000 +"), ordered = TRUE)
 
 number_df %>% 
   ggplot(aes(x = t, y = cases)) +
   geom_path(aes(color = region)) +
-  facet_grid(group ~ ., scales = "free") +
+  facet_wrap(group ~ ., scales = "free", ncol = 2) +
   theme(legend.position = "none") +
   geom_dl(aes(label = region), method = list(dl.combine("last.points"), cex = 0.7)) +
   labs(
@@ -270,7 +273,7 @@ number_df %>%
     x = "Days Since First Case",
     y = "Cumulative Cases (Grouped by Total)"
   )
-ggsave("./visualizations/all_covid_cases.jpg", width = 12, height = 8)
+ggsave("./visualizations/all_covid_cases.jpg", width = 15, height = 8)
 ```
 
 ## Differences in Stay at Home Orders
@@ -416,5 +419,24 @@ gmm_plot = gmm_graphing_df %>%
   )
 
 ggplotly(gmm_plot, tooltip = "text")
+```
+
+# Answering Questions from Task 1
+## How many regions have passed the midpoint?
+```{r}
+midpoint_df = growing_df %>% 
+  group_by(region) %>% 
+  mutate(max_t = max(t)) %>% 
+  dplyr::select(region, c, max_t) %>% 
+  unique() 
+
+# webshot::install_phantomjs()
+
+midpoint_table = midpoint_df %>% 
+  filter(max_t > (2 * c))
+
+kable(midpoint_table) %>% 
+  kable_styling("striped", full_width = F) %>%
+  save_kable("./visualizations/midpoint_table.jpg")
 ```
 
