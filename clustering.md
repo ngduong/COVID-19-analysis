@@ -35,8 +35,7 @@ data = as_tibble(data) %>% map_df(.x = ., standardize)
 the nearest center that has already been chosen. Choose one new data
 point at random as a new center, using a weighted probability
 distribution where a point x is chosen with probability proportional to
-d^2 Repeat steps 2 and 3 until k centers have been
-chosen.
+d^2 Repeat steps 2 and 3 until k centers have been chosen.
 
 ``` r
 #partition of data such that squared error between empirical mean and points in each cluster/partition is minimized
@@ -94,8 +93,7 @@ table(km_sim$cluster,data_true$cluster) %>% knitr::kable()
 |  4 | 77 |  6 |
 
 Misclassification is not too high, reason for misclassification is
-likely due to MVN RV’s are actually kind of close to each
-other.
+likely due to MVN RV’s are actually kind of close to each other.
 
 ``` r
 plot_ly(x=data_new[,1], y=data_new[,2], z=data_new[,3], type="scatter3d", mode="markers", color = data_new[,4])
