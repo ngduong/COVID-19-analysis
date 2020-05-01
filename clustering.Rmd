@@ -116,7 +116,7 @@ param_standard = cbind(param_standard, col)
 colnames(param_standard) = param_names
 param_both = cbind(param_standard, param_df)
 
-set.seed(7)
+set.seed(2020)
 #apply K-means to param estimates data
 km_2 <- km_func(param_standard, 2)
 km_3 <- km_func(param_standard, 3)
@@ -294,7 +294,7 @@ plot_ly(x=sim_data_gmm$a, y=sim_data_gmm$b, z=sim_data_gmm$c,
 Now, we can try run GMM on estimated parameter data, picking k = 3
 
 ```{r results = 'asis'}
-set.seed(7)
+set.seed(2020)
 param_gmm <- gmm_func(param_standard, 3)
 
 #prepare data 
