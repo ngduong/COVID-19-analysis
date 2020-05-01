@@ -1,0 +1,106 @@
+---
+title: "future_cases"
+author: "Ngoc Duong"
+date: "4/30/2020"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(RCurl)
+library(tidyverse)
+library(knitr)
+```
+
+load curves.RData
+
+```{r}
+load("./curves.RData")
+```
+
+
+```{r}
+########## Additional days
+http = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/"
+
+dates = seq.Date(as.Date("04-21-2020", format = "%m-%d-%Y"), 
+                 as.Date("04-29-2020", format = "%m-%d-%Y"), 
+                 by = "day")
+dates = format(dates, "%m-%d-%Y")
+
+urls = paste0(http, dates, ".csv")
+
+files = lapply(1:length(dates), function(i){
+  d = read.csv(urls[[i]])
+  d$date = dates[[i]]
+  
+  return(d)
+})
+
+covid_update = dplyr::bind_rows(files) %>%
+  janitor::clean_names() %>%
+  dplyr::select(country_region, 
+                lat, 
+                long,
+                date,
+                confirmed,
+                deaths) %>%
+  rename(confirmed_cases = confirmed,
+         fatalities = deaths) 
+```
+
+Some more cleaning 
+
+```{r}
+covid_update1 = covid_update %>% drop_na() %>% 
+  mutate(date = lubridate::parse_date_time(x = date,
+                                           orders = c("m/d/y", "m-d-Y"))) 
+
+## group data by country
+by_country_update = covid_update1 %>%
+  dplyr::group_by(country_region) %>%
+  dplyr::mutate(t = as.numeric(difftime(date, min(date), units = "days"))) %>%
+  dplyr::group_by(country_region, t) %>%
+  dplyr::summarise(confirmed_cases = sum(confirmed_cases), # group by date and take total 
+            fatalities = sum(fatalities))
+
+by_country_old = by_country %>% group_by(country_region) %>% summarise(max_t = max(t))
+param_df1 = rename(param_df1, `country_region` = region)
+
+by_country_updated = merge(by_country_old, by_country_update, by = "country_region")
+by_country_updated = merge(by_country_updated, param_df1, by = "country_region") %>% 
+  mutate(new_t = max_t + t) %>% dplyr::select(-max_t, -t)
+```
+
+Find predicted cases using the estimated parameters 
+
+```{r results = 'asis'}
+pred_case = function(a,b,c,t){
+  a/(1+exp(-b*(t-c)))
+}
+
+by_country_pred = by_country_updated %>% 
+  mutate(pred_case = pred_case(a,b,c,new_t)) %>% 
+  group_by(country_region) %>% 
+  mutate(rmse = sqrt(mean(pred_case - confirmed_cases)^2)) 
+
+
+by_country_pred %>% dplyr::select(country_region, rmse) %>% 
+  rename(`Country` = country_region, RMSE = rmse) %>% distinct(Country, .keep_all = TRUE) %>%
+  knitr::kable()
+
+by_country_pred %>% ungroup() %>% summarise(`Min RMSE` = min(rmse),
+                              `Max RMSE` = max(rmse),
+                              `Mean RMSE` = mean(rmse),
+                              `Median RMSE` = median(rmse)) %>% knitr::kable()
+```
+
+Using the estimated parameter for the period until 04/20/2020, we were able to make predictions for the following 8 days until 04/29/2020. The median RMSE for these new predictions across all countries is 131.97. The lowest RMSE is 0.94, and mean RMSE is within acceptable range given the rapid surge in recent number of cases. The maximum RMSE, however, is quite high, at more than 100,000. This is the case of the US. As we did not model each state separately but instead lump all data under the country USA, it is reasonable to see high deviances between the number of predicted cases and actual confirmed cases. As we all know, different states within the US are seeing the number of confirmed cases rising at different rates, on top of discrepancies in testing availability throughout the country, there is no one-size-fits-all model that might capture precisely these underlying trends. 
+
+All in all, besides the high RMSE in the US, which is due to vast differences between regions populations and state policies regarding public health interventions, the RMSE for all other countries are within reasonable range, which gives us confidence in the model's ability to predict well future cases. 
+
+Export data
+```{r eval = FALSE}
+write.csv(by_country_updated, "./by_country_updated.csv", row.names = FALSE)
+```
