@@ -449,7 +449,8 @@ income_group_df = read_csv("./country_code_gdp_indicators.csv") %>%
                          "Yemen, Rep." = "Yemen"))
 
 global_bank_df = kmeans_graphing_df %>% 
-  left_join(income_group_df, by = "region")
+  left_join(income_group_df, by = "region") %>% 
+  filter(!is.na(income_group))
 
 income_group_plot = global_bank_df %>% 
   ggplot(aes(x = t, y = cases, color = cluster, text = region)) +
