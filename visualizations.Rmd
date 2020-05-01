@@ -418,3 +418,50 @@ gmm_plot = gmm_graphing_df %>%
 ggplotly(gmm_plot, tooltip = "text")
 ```
 
+```{r income group plot, cache = TRUE, fig.height = 16}
+income_group_df = read_csv("./country_code_gdp_indicators.csv") %>% 
+  janitor::clean_names() %>% 
+  rename("region" = table_name,
+         "global_region" = region) %>% 
+  mutate(region = recode(region, 
+                         "Bahamas, The" = "Bahamas",
+                         "Brunei Darussalam" = "Brunei",
+                         "Côte d'Ivoire" = "Cote d'Ivoire",
+                         "Congo, Dem. Rep." = "Congo (Kinshasa)",
+                         "Congo, Rep." = "Congo (Brazzaville)",
+                         "Czech Republic" = "Czechia",
+                         "Egypt, Arab Rep." = "Egypt",
+                         "Gambia, The" = "Gambia",
+                         "Iran, Islamic Rep." = "Iran",
+                         "Korea, Rep." = "Korea, South",
+                         "Kyrgyz Republic" = "Kyrgyzstan",
+                         "Lao PDR" = "Laos",
+                         "Russian Federation" = "Russia",
+                         "Myanmar" = "Burma",
+                         "St. Kitts and Nevis" = "Saint Kitts and Nevis",
+                         "St. Vincent and the Grenadines" = "Saint Vincent and the Grenadines",
+                         "St. Lucia" = "Saint Lucia",
+                         "São Tomé and Principe" = "Sao Tome and Principe",
+                         "Slovak Republic" = "Slovakia",
+                         "Syrian Arab Republic" = "Syria",
+                         "United States" = "US",
+                         "Venezuela, RB" = "Venezuela",
+                         "Yemen, Rep." = "Yemen"))
+
+global_bank_df = kmeans_graphing_df %>% 
+  left_join(income_group_df, by = "region")
+
+income_group_plot = global_bank_df %>% 
+  ggplot(aes(x = t, y = cases, color = cluster, text = region)) +
+  geom_path() +
+  facet_grid(income_group ~ ., scales = "free", labeller = labeller(cluster = labels)) +
+  theme(legend.position = "none") +
+  labs(
+    title = "Cumulative COVID-19 Cases Grouped by K-Means Clustering",
+    x = "Days Since First Case",
+    y = "Cumulative Cases Grouped by Cluster"
+  )
+
+ggplotly(income_group_plot, tooltip = "text")
+```
+
