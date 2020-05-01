@@ -2,7 +2,7 @@
 title: "task-2"
 author: "Ngoc Duong"
 date: "4/23/2020"
-output: github_document
+output: pdf_document
 editor_options: 
   chunk_output_type: console
 ---
@@ -81,7 +81,7 @@ km_func <- function(data, k){
 
 ```{r}
 #test on simulated data 
-set.seed(3)
+set.seed(7)
 km_sim <- km_func(data, 3)
 colnames(data) = c("a","b","c")
 data_new = cbind(data, cluster = km_sim$cluster)
@@ -116,6 +116,7 @@ param_standard = cbind(param_standard, col)
 colnames(param_standard) = param_names
 param_both = cbind(param_standard, param_df)
 
+set.seed(7)
 #apply K-means to param estimates data
 km_2 <- km_func(param_standard, 2)
 km_3 <- km_func(param_standard, 3)
@@ -161,33 +162,22 @@ plot_ly(x=param_km5_final$a, y=param_km5_final$b, z=param_km5_final$c,
 Summary table for kmeans clustering results
 
 ```{r results = 'asis'}
-param_km3_final %>% group_by(cluster) %>% 
-  summarise(a_mean = mean(a),
-            b_mean = mean(b),
-            c_mean = mean(c),
-            a_max = max(a),
-            b_max = max(b),
-            c_max = max(c),
-            a_min = min(a),
-            b_min = min(b),
-            c_min = min(c)) %>% 
-  knitr::kable()
-
-param_km4_final %>% group_by(cluster) %>% 
-  summarise(a_mean = mean(a),
-            b_mean = mean(b),
-            c_mean = mean(c),
-            a_max = max(a),
-            b_max = max(b),
-            c_max = max(c),
-            a_min = min(a),
-            b_min = min(b),
-            c_min = min(c)) %>% 
+param_km3_final %>% group_by(cluster) %>%
+  summarise(`Mean a` = mean(a),
+            `Mean b` = mean(b),
+            `Mean c` = mean(c),
+            `Max a` = max(a),
+            `Max b` = max(b),
+            `Max c` = max(c),
+            `Min a` = min(a),
+            `Min b` = min(b),
+            `Min c` = min(c)) %>% 
   knitr::kable()
 ```
 
 Grouped boxplots of a, b, and c for 3 clusters (k = 3)
 
+On original scale 
 ```{r}
 a = param_km3_final %>% group_by(cluster) %>% 
   ggplot(aes(x = cluster, y = a, fill = factor(cluster))) +
@@ -205,6 +195,26 @@ c = param_km3_final %>% group_by(cluster) %>%
   theme(legend.position = "none", axis.title.x=element_blank())
 
 a+b+c
+```
+
+On standardized scale
+```{r}
+a1 = param_km3_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = a_std, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + 
+  theme(legend.position = "none", axis.title.x=element_blank()) 
+
+b1 = param_km3_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = b_std, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + labs(fill = "Cluster") + 
+  theme(legend.position = "bottom", axis.title.x=element_blank())
+  
+c1 = param_km3_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = c_std, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + 
+  theme(legend.position = "none", axis.title.x=element_blank())
+
+a1+b1+c1
 ```
 
 
@@ -263,7 +273,7 @@ gmm_func <- function(X, k){
 
 Test on simulated data
 ```{r}
-set.seed(3)
+set.seed(7)
 gmm_test = gmm_func(data, 3)
 sim_data_gmm = cbind(data,gmm_test$cluster) %>% dplyr::select(-row) %>% rename(cluster = col)
 
@@ -284,7 +294,7 @@ plot_ly(x=sim_data_gmm$a, y=sim_data_gmm$b, z=sim_data_gmm$c,
 Now, we can try run GMM on estimated parameter data, picking k = 3
 
 ```{r results = 'asis'}
-set.seed(3)
+set.seed(7)
 param_gmm <- gmm_func(param_standard, 3)
 
 #prepare data 
@@ -294,40 +304,15 @@ param_gmm_final = cbind(param_both, cluster= param_gmm$cluster[,2]) %>%
 table(param_gmm_final$cluster) %>% knitr::kable()
 
 param_gmm_final %>% group_by(cluster) %>% 
-  summarise(a_mean = mean(a),
-            b_mean = mean(b),
-            c_mean = mean(c),
-            a_max = max(a),
-            b_max = max(b),
-            c_max = max(c),
-            a_min = min(a),
-            b_min = min(b),
-            c_min = min(c)) %>% 
-  knitr::kable()
-```
-
-Pick k = 4 
-
-```{r results = 'asis'}
-set.seed(3)
-param_gmm4 <- gmm_func(param_standard, 4)
-
-#prepare data 
-param_gmm4_final = cbind(param_both, cluster= param_gmm4$cluster[,2]) %>%
-  group_by(cluster) %>% arrange(desc(cluster))
-
-table(param_gmm4_final$cluster) %>% knitr::kable()
-
-param_gmm4_final %>% group_by(cluster) %>% 
-  summarise(a_mean = mean(a),
-            b_mean = mean(b),
-            c_mean = mean(c),
-            a_max = max(a),
-            b_max = max(b),
-            c_max = max(c),
-            a_min = min(a),
-            b_min = min(b),
-            c_min = min(c)) %>% 
+  summarise(`Mean a` = mean(a),
+            `Mean b` = mean(b),
+            `Mean c` = mean(c),
+            `Max a` = max(a),
+            `Max b` = max(b),
+            `Max c` = max(c),
+            `Min a` = min(a),
+            `Min b` = min(b),
+            `Min c` = min(c)) %>% 
   knitr::kable()
 ```
 
@@ -339,13 +324,11 @@ plot_ly(x=param_gmm_final$a_std, y=param_gmm_final$b_std, z=param_gmm_final$c_st
 #visualize on original data k =3 
 plot_ly(x=param_gmm_final$a, y=param_gmm_final$b, z=param_gmm_final$c, 
         type="scatter3d", mode="markers", color = param_gmm_final$cluster)
-
-#visualize on original data k=4
-plot_ly(x=param_gmm4_final$a, y=param_gmm4_final$b, z=param_gmm4_final$c, 
-        type="scatter3d", mode="markers", color = param_gmm4_final$cluster)
 ```
 
 Grouped boxplots of a, b, and c for 3 clusters (k = 3)
+
+On original scale 
 
 ```{r}
 d = param_gmm_final %>% group_by(cluster) %>% 
@@ -366,5 +349,83 @@ f = param_gmm_final %>% group_by(cluster) %>%
 d+e+f
 ```
 
+On standardized scale 
+```{r}
+d1 = param_gmm_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = a_std, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + 
+  theme(legend.position = "none", axis.title.x=element_blank()) 
+
+e1 = param_gmm_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = b_std, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + labs(fill = "Cluster") + 
+  theme(legend.position = "bottom", axis.title.x=element_blank())
+  
+f1 = param_gmm_final %>% group_by(cluster) %>% 
+  ggplot(aes(x = cluster, y = c_std, fill = factor(cluster))) +
+  geom_boxplot() + theme_bw() + 
+  theme(legend.position = "none", axis.title.x=element_blank())
+
+d1+e1+f1
+```
 
 
+**Math behind clustering methods**
+
+For both methods, we first standardize the data as follows: 
+$$standardized(x_{i}) = \frac{x_{i} - \bar{x}}{std(x)}$$ for $i = 1,2,..., n$
+
+**K-means**
+
+First, we produce a set of initial centroids (sample means) $\mu_1^{(0)}, \mu_2^{(0)},...,\mu_k^{(0)}\}$. The k-means algorithm is based on that initialized setup to iterate the following two steps:
+
+**Find optimal cluster assignment given fixed centroids** 
+
+For each data point $x_i$, compute $d_i$, the Euclidean distance between $x_i$ and the centroids, then assign $x_i$ to cluster with the smallest $d_i$. This is equivalent to: 
+
+$$r_{i,j}^{(v+1)} = I\{j=\arg\min_j \|\mathbf x_i - \mu_j^{(v)}\|\}$$
+**Calculate cluster centers using the cluster assignment in the previous step** 
+
+This steps involves minimizing $J(r, \mu)$ over $\mu$: 
+
+$$\mu_j^{(v+1)} =\frac{\sum_{i=1}^n\mathbf x_i r_{i,j}^{(v+1)}}{\sum_{i=1}^n r_{i,j}^{(v+1)}} $$
+
+In other words, we update the new cluster means by taking the average of all datapoints that belong to that cluster using a weighted probability distribution where point $x_i$ is chosen. This reflects the new cluster assignments of the datapoints.
+
+Then, we repeat these two steps until k centers have been chosen/converged.
+
+**Gaussian mixtures**
+
+Let {x1,x2,...,xn} $\in R^3$ be a collection of 3-dimensional datapoints. Assuming they come from underlying Gaussian distributions, we can implement the EM algorithm to identify what distribution each points belongs to, which consists of three steps: initialization, E-step, and M-step. In short, the algorithm randomly selects k different clusters and starts with finding weights, mean, and covariance matrix for each cluster. Then, E-step can be applied on those values. These two steps are then reiteratively applied back-and-forth until centroids converge or maximum iteration threshold is reached.
+
+**Initialization**
+
+Gaussian mixture models assume that each latent class has different means and covariances. However, since each class is unknown, we begin by intializing the parameters and iteratively updating. Here, we chose to initialize 3 (random) different classes.
+
+Then, we initialize a weight (posterior probability) matrix $\gamma$ with size, where each row contains the mean value for each of the three Gaussians. Then, the values for covariance matrix list, where each element in the list represents a covariance matrix for each Gaussian. Finally, we can randomly assign data to each Gaussian with the weight matrix, where each column shows the probability each point belongs to each of the three clusters.
+
+**E-step**
+In E-step, each observation is assigned a weight (responsibility) for each cluster, based on the likelihood of each of the corresponding Gaussian using the initialized parameters (means and covariance matrix and the function dmvnorm). The responsibility is defined as:
+
+$$\hat\gamma_{i, k} ^{(t)}= P(r_{i,k}=1 |\mathbf x_i,  \theta^{(t)}) =  
+\frac{p_k^{(t)}f(\mathbf x_i|\boldsymbol \mu_k^{(t)}, \Sigma_k^{(t)})}
+{\sum_{j=1}^K f(\mathbf x_i|\boldsymbol \mu_j^{(t)}, \Sigma_j^{(t)})}$$
+
+**M-step**
+
+In the M-step, we aim to maximize the complete log-likehood function and thus revising the parameters. In this step, each observation contributes to the weighted means and covariances for every cluster. Here, the mixing component is $p_k = \frac{n_k}{n} (1)$, also a prior for each class estimated from the data. 
+Let $n_k = \sum_i^n{\gamma_{ik}} (2)$, we have 
+$$\mu_k = \frac{1}{m_k} \sum_i{\gamma_{ik}x_i} (3)$$, and 
+$$\Sigma_k = \frac{1}{n_k} \sum_i{\gamma_{ik}(x_i – \mu_k)^T(x_i-\mu_k)} (4)$$
+
+
+We start by updating the mixing components (i.e. prior probabilities). Each datapoint contributes to a $\gamma_{i,k}$ which corresponds to one column vector each class. Given the available information, using (1) and (2), we can update the prior probabilities. Following the formulas (3) and (4), we can update $\mu_k^{t+1}$ and $\Sigma_k^{t+1}$ as our new Gaussian density parameters. This process involves standard calculation of mean and variance for a Gaussian distribution. However, during this process, we also use weights $\gamma_{ik}$ and $\frac{1}{m_k}$ to weight each point in our mean and covariance estimation.
+
+Once the likelihood has been maximized in this step, loop back and iterate the process until a maximum is found/an iteration threshold has been reached.
+
+**Discussion for clustering**
+
+Despite the relative similarity in the decision boundaries of the two clustering methods, Gaussian mixtures model produced a somewhat smoother decision boundary/plane. (3D plot?)
+
+We also might want to take into account some considerations:
+Gaussian mixture models converge well when the class densities are better separated, so this also depends on how fine the parameter estimates are. 

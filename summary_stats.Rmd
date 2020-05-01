@@ -1,0 +1,88 @@
+---
+title: "summary-stats"
+author: "Ngoc Duong"
+date: "4/30/2020"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(stargazer)
+```
+
+Load curves.Rdata
+```{r}
+load("./curves.RData")
+```
+
+
+```{r}
+by_country %>% group_by(country_region) %>%
+  rename(`Country/Region` = country_region) %>% 
+  summarise(`Median days` = median(t),
+            `1st quartile` = quantile(t, probs = 0.25),
+            `2nd quartile` = quantile(t, probs = 0.75),
+            `Max days` = max(t)) %>% 
+  knitr::kable()
+```
+
+### What did we learn from the fitted models?
+
+```{r}
+by_country = by_country %>% rename(region = country_region)
+summary_country_df = left_join(by_country, param_df1, by = "region")  
+```
+
+**How many regions have passed the midpoint?**
+Characterized by max(t) > c
+
+```{r}
+peak_data = summary_country_df %>% group_by(region) %>% 
+  mutate(max_t = max(t)) %>% 
+  dplyr::select(-t, -confirmed_cases, -fatalities) %>% 
+  distinct(region, .keep_all=TRUE) 
+
+past_peak_1wk = peak_data %>% filter(max_t > c + 7) 
+
+past_peak_2wk = peak_data %>% filter(max_t > c + 14)
+
+past_peak_1mn = peak_data %>% filter(max_t > c + 30)
+past_peak_1mn
+```
+
+Based on our models, there are three countries that have passed their peak for at least 30 days. These countries include China and South Korea, which were among the very first countries in the world to suffer from the COVID-19 epidemic. The third country is Cambodia, which recorded very low new confirmed cases and have been clear for COVID-19 for 
+
+**How many regions are approaching the end of virus spreading?**
+Characterized by lowest b (bottom 10%?) among those whose max(t) > c
+
+```{r}
+minb = peak_data %>% filter(max_t > c + 7) %>% ungroup() %>% top_n(-10, b)
+minb
+```
+
+We picked countries that have the lowest growth rate "b" among those that have passed their peak for at least 7 days. Countries in this list include "Australia", "Costa Rica", Czechia", "Lebanon", "Norway", "San Marino", "Senegal", "Taiwan", "Uganda", "Vietnam", and "Diamond Princess."
+
+
+**Which regions have faster growth rate and which have more "flat growth"**
+Characterized by larger b and smaller b among those whose max(t) < c. Implications for better allocation of resources and public health interventions.
+
+```{r}
+fast_growth_overall = peak_data %>% ungroup() %>% top_n(5, b)
+fast_growth_overall
+
+slow_growth_overall =  peak_data %>% ungroup() %>% top_n(-5, b)
+slow_growth_overall
+
+fast_growth = peak_data %>% filter(max_t < c) %>% ungroup()%>% top_n(5, b)
+fast_growth 
+
+slow_growth = peak_data %>% filter(max_t < c) %>% ungroup()%>% top_n(-5, b)
+slow_growth 
+```
+
+
+
+
