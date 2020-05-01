@@ -236,8 +236,9 @@ knitr::include_graphics("km4-3dplot.png")
 knitr::include_graphics("gmm3.png")
 ```
 
-
 \pagebreak
+
+\newpage
 ## R functions
 
 ```{r fit_curves, eval = FALSE, echo = TRUE}
