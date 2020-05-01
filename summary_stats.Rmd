@@ -2,7 +2,7 @@
 title: "summary-stats"
 author: "Ngoc Duong"
 date: "4/30/2020"
-output: github_document
+output: pdf_document
 editor_options: 
   chunk_output_type: console
 ---
@@ -22,9 +22,9 @@ load("./curves.RData")
 ```{r}
 by_country %>% group_by(country_region) %>%
   rename(`Country/Region` = country_region) %>% 
-  summarise(`Mean days` = mean(t),
-            `Median days` = median(t),
-            `IQR` = IQR(t),
+  summarise(`Median days` = median(t),
+            `1st quartile` = quantile(t, probs = 0.25),
+            `2nd quartile` = quantile(t, probs = 0.75),
             `Max days` = max(t)) %>% 
   knitr::kable()
 ```
