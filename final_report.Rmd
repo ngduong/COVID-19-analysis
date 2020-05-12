@@ -97,56 +97,11 @@ Once the likelihood has been maximized in this step, we loop back and iterate th
 
 ### Data and model fitting
 
-There are 186 countries in the dataset. Generally speaking, countries that were hit with the virus earlier have a higher total number of confirmed cases (Figure 1).
+There are 186 countries in the dataset. Generally speaking, countries that were hit with the virus earlier have a higher total number of confirmed cases. Additionally, tallies suggest skewness in the total number of cases across countries; most countries are seeing under 5,000 cases (Figure 1). 
 
-```{r dist, fig.height = 8, fig.width = 8}
-total_cases = by_country %>%
-  group_by(country_region) %>%
-  slice(n()) %>%
-  rowwise() %>%
-  mutate(gr = if_else(confirmed_cases >= 1e4 & confirmed_cases < 1e5, "10,000 - 99,999", 
-                      if_else(confirmed_cases >= 5e3 & confirmed_cases < 1e4, "5,000 - 9,999",
-                              if_else(confirmed_cases >= 1e3 & confirmed_cases < 5e3, "1,000 - 4,999",
-                                      if_else(confirmed_cases >= 500 & confirmed_cases < 1e3, "500 - 999",
-                                              if_else(confirmed_cases >= 100 & confirmed_cases < 500, "100 - 499", 
-                                                      if_else(confirmed_cases < 100, "0 - 99", "100,000 +"))))))) %>%
-  mutate(gr = factor(gr, level = c("0 - 99",
-                                   "100 - 499",
-                                   "500 - 999",
-                                   "1,000 - 4,999",
-                                   "5,000 - 9,999",
-                                   "10,000 - 99,999",
-                                   "100,000 +")))
+Since the midpoint milestone, the cumulative number of cases per day have been rising at a decreasing rate. There are 93 countries that are past the midpoint, or peak, of COVID-19 spread. Of these, 63 are at least a week past, 38 are at least 2 weeks past, and 3 countries (China, South Korea, and Cambodia) are at least 1 month past the peak. These latter 3 countries are definitely nearing or have reached this first wave of virus spread. 
 
-
-totals_count = table(total_cases$gr) %>%
-  as.data.frame() %>%
-  mutate(y = c(15, 6, 4, 5, 3, 3, 2),
-         x = 15,
-         text = paste("n = ", Freq)) %>%
-  dplyr::rename(., gr = Var1)
-
-
-total_cases %>%
-  ggplot(aes(x = t)) +
-  geom_histogram() +
-  geom_text(data = totals_count,
-            aes(x = x, y = y, label = text),
-            fontface = "bold",
-            hjust = 0,
-            size = 5) +
-  facet_grid(gr ~ ., scales = "free") + 
-  labs(x = "Days since first infection",
-       y = "Number of countries",
-       title = "Number of days since first infection") +
-  theme_bw() + 
-  theme(strip.text.y = element_text(size = 10, angle = 270))
-```
-
-
-Since the midpoint milestone, the cumulative number of cases per day have been rising at a decreasing rate. There are 93 countries that are past the midpoint, or peak, of COVID-19 spread. Of these, 63 are at least a week past, 38 are at least 2 weeks past, and 3 countries (China, South Korea, and Cambodia) are at least 1 month past the peak.
-
-It appears that the countries with the highest growth rate (b) have comparably low expected total number of cases. Table 1 gives this information for the top 10 largest growth rate countries, all of which have passed their midpoint. 
+It appears that the countries with the highest growth rate (b) have comparably low expected total number of cases. Table 1 gives this information for the top 10 largest growth rate countries, all of which have passed their midpoint. Table 2 shows the 10 countries with the smallest growth rate. Most of these have total confirmed case counts under 500, and none of them have yet reached their peak (midpoint). Twenty-five countries are nearing (within 5\%) or have already passed the end of virus spread (Table 3). There is no obvious pattern to this group of countries, although there are several that were hit by the virus early, and most of the countries are in the Eastern Hemisphere.
 
 ```{r}
 summary_country_df = by_country %>% 
@@ -167,6 +122,28 @@ peak_data %>% ungroup() %>% top_n(10, b) %>%
                              "b",
                              "c",
                              "Days obs. since first infection (t)"))
+
+peak_data %>% ungroup() %>% top_n(-10, b) %>% 
+  dplyr::arrange(b) %>%
+  mutate(c = round(c, 0)) %>%
+  knitr::kable(caption = "Top 10 countries with low growth rate",
+               col.names = c("Country",
+                             "a",
+                             "b",
+                             "c",
+                             "Days obs. since first infection (t)"))
+
+
+summary_country_df %>%
+  group_by(region) %>%
+  dplyr::slice(n()) %>%
+  mutate(dif = round(confirmed_cases/a, 2)) %>%
+  arrange(desc(dif)) %>%
+  ungroup() %>%
+  top_n(25, dif) %>%
+  dplyr::select(region, t, confirmed_cases, a, dif) %>% 
+  knitr::kable(caption = "Countries that have reached at least 95% of their expected total number of cases",
+               col.names = c("Country", "Days since first case", "Confirmed cases", "Expected total", "Percent of expected total observed"))
 ```
 
 
@@ -174,15 +151,35 @@ peak_data %>% ungroup() %>% top_n(10, b) %>%
 
 A visual inspection suggests that the exponential distribution is an appropriate model for the data across countries. Figure 2 shows the observed and fitted data for select countries.
 
-```{r highlighted_fits}
 
+
+Using the estimated parameter for the period until 04/20/2020, we were able to make predictions for the following 8 days until 04/29/2020.  The lowest RMSE is quite low at 0.81. The maximum RMSE, however, is quite high, at more than 100,000. Since we observed some skewness previously (confirmed by the large discrepany in the mean and median RMSE) we may look at the median RMSE: 128.8. 
+
+```{r}
+by_country_updated = read.csv(file.path(getwd(), "by_country_updated.csv"))
+
+pred_case = function(a, b, c, t){
+  a/(1 + exp(-b*(t - c)))
+}
+
+set.seed(1)
+by_country_pred = by_country_updated %>% 
+  mutate(pred_case = pred_case(a,b,c,new_t)) %>% 
+  group_by(country_region) %>% 
+  mutate(rmse = sqrt(mean(pred_case - confirmed_cases)^2)) 
+
+
+by_country_pred %>% 
+  ungroup() %>% 
+  summarise(`Min RMSE` = min(rmse),
+            `Max RMSE` = max(rmse),
+            `Mean RMSE` = mean(rmse),
+            `Median RMSE` = median(rmse)) %>% 
+  knitr::kable()
 ```
 
-Using the estimated parameter for the period until 04/20/2020, we were able to make predictions for the following 8 days until 04/29/2020. The median RMSE for these new predictions across all countries is 131.97. The lowest RMSE is 0.94, and mean RMSE is within acceptable range given the rapid surge in recent number of cases. The maximum RMSE, however, is quite high, at more than 100,000. 
 
 ### Clustering
-
-K-means and GMM both give interpretable groupings.
 
 Under a K-mean algorithm with 4 clusters, all three components of the exponential model contributed to the groupings (Figure 3).
 
@@ -191,34 +188,57 @@ Under a K-mean algorithm with 4 clusters, all three components of the exponentia
 - Group 3: Low-moderate total expected cases, high growth rate, short time to peak.
 - Group 4: Wide range in total expected case, low growth rate, long time to peak.
 
-```{r}
 
-```
+Under a GMM with 3 clusters, the main discriminating feature is the total expected number of cases (Figure 4). In this case, we can observe low- (cluster 3), moderate- (cluster 1), and high-case (cluster 2) level groups. 
 
-Under a GMM with 3 clusters, the main discriminating feature is the total expected number of cases (Figure 4). In this case, we can observe low-, moderate-, and high-case level groups.
 
-```{r}
+In Figure 5, we see the modeled curves split by cluster. There appears to be some degree of geographical separation; for example, we see many East Asian countries in cluster 1, as well as many European countries in cluster 2. 
 
-```
+
 
 
 ## Discussion
 
 
-This is the case of the US. As we did not model each state separately but instead lump all data under the country USA, it is reasonable to see high deviances between the number of predicted cases and actual confirmed cases. As we all know, different states within the US are seeing the number of confirmed cases rising at different rates, on top of discrepancies in testing availability throughout the country, there is no one-size-fits-all model that might capture precisely these underlying trends. 
+Overall, the exponential model seems to be very reasonable for modeling this pandemic, and we have confidence in the model's ability to predict future case counts. Though the RMSE values reach quite high, the results are skewed towards lower values. And considering that the measure is on the absolute scale with confirmed case numbers in the thousands and tens of thousands, the results are reasonable. A commentary on country-level versus state-level modeling. For the model of the USA cases, we observed an RMSE of over 100,000. However, the USA has the more cases than any other country. Additionally, we did not model each state separately. Thus it is reasonable to see high deviances between the number of predicted cases and observed cases. As we all know, different states within the US are seeing the number of confirmed cases rising at different rates and to different magnitudes, on top of discrepancies in testing availability throughout the country, there is no one-size-fits-all model that might capture precisely these underlying trends. 
 
-All in all, besides the high RMSE in the US, which is due to vast differences between regions populations and state policies regarding public health interventions, the RMSE for all other countries are within reasonable range, which gives us confidence in the model's ability to predict well future cases. 
+Both clustering algorithms gave very interpretable results. We chose 4 clusters and 3 clusters for the K-means and GMM algorithms, respectively, based on the interpretability of the groupings. K-means clustering distinguished curves based on all parameters in the model, whereas GMM was influenced primarily by the expected total number of cases. Choosing between these two algorithms may be a matter of preference. For example, the GMM produced a somewhat smoother decision boundary/plane (Figures 6, 7), but these boundaries and the algorithm's ability to converge depend on how well the classes are separated and how precise the parameter estimates are. 
 
-
-Despite the relative similarity in the decision boundaries of the two clustering methods, Gaussian mixtures model produced a somewhat smoother decision boundary/plane. (3D plot?)
-
-We also might want to take into account some considerations:
-Gaussian mixture models converge well when the class densities are better separated, so this also depends on how fine the parameter estimates are. 
-
-
-
+One limitation of our study is that we did not include external data to formally understand what factors may explain the clustering results. For example, given the varieties of countries included in each GMM cluster, it is unclear what external factors contribute to the low-, moderate-, and high-cases. Some factors we suspect as having influence are: the overall population size, the number of countries with a high-density population, the portion of the federal budget that is allocated to health efforts, and the time at which the country introduced social distancing and other measures. 
 
 \pagebreak
+
+```{r fig.cap="Number of days since first infection, by total observed cases", out.width = '100%'}
+knitr::include_graphics("hist.png")
+```
+
+```{r fig.cap="Comparison of Algorithm-Generated Data vs. Real Data", out.width = '100%'}
+knitr::include_graphics("comparison_graph.jpg")
+```
+
+```{r fig.cap="K-means clusters", out.width = '100%'}
+knitr::include_graphics("kmeans_4clusters.png")
+```
+
+```{r fig.cap="GMM clusters", out.width = '100%'}
+knitr::include_graphics("gmm_3clusters.png")
+```
+
+```{r fig.cap="Curves by cluster (GMM)", out.width = '100%'}
+knitr::include_graphics("gmm_graph.jpg")
+```
+
+```{r fig.cap="Clustering boundaries (K-means)", out.width = '100%'}
+knitr::include_graphics("km4-3dplot.png")
+```
+
+```{r fig.cap="Clustering boundaries (GMM)", out.width = '100%'}
+knitr::include_graphics("gmm3.png")
+```
+
+\pagebreak
+
+\newpage
 ## R functions
 
 ```{r fit_curves, eval = FALSE, echo = TRUE}
