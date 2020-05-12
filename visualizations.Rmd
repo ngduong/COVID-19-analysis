@@ -173,19 +173,19 @@ growing_df = fitted_list_2 %>%
   
 for (i in 1:length(growing_df$region)) {
     if (growing_df$b[i] < 0.08) {
-    growing_df$group[i] = "Growing Very Slowly"
+    growing_df$group[i] = "b < 0.08"
   } else if (growing_df$b[i] < 0.15) {
-    growing_df$group[i] = "Growing Slowly"
+    growing_df$group[i] = "0.08 < b < 0.15"
   } else if (growing_df$b[i] < 0.22) {
-    growing_df$group[i] = "Growing Moderately"
+    growing_df$group[i] = "0.15 < b < 0.22"
   } else if (growing_df$b[i] < 0.32) {
-    growing_df$group[i] = "Growing Quickly"
+    growing_df$group[i] = "0.22 < b < 0.32"
   } else {
-    growing_df$group[i] = "Growing Very Quickly"
+    growing_df$group[i] = "b > 0.32"
   }
 }
 
-growing_df$group = factor(growing_df$group, levels = c("Growing Very Slowly", "Growing Slowly", "Growing Moderately", "Growing Quickly", "Growing Very Quickly"), ordered = TRUE)
+growing_df$group = factor(growing_df$group, levels = c("b < 0.08", "0.08 < b < 0.15", "0.15 < b < 0.22", "0.22 < b < 0.32", "b > 0.32"), ordered = TRUE)
 
 growing_df %>% 
   ggplot(aes(x = t, y = cases)) +
@@ -331,7 +331,7 @@ ggsave("./visualizations/social_distancing_percentage.jpg", width = 12, height =
 # Plotting Clustering Results
 ## K means Clustering
 ```{r}
-kmeans_df = read_csv("./param_km3_final.csv") %>% 
+kmeans_df = read_csv("./param_km4_final.csv") %>% 
   group_by(cluster) %>% 
   mutate(
     mean_a = round(mean(a), digits = 0),
@@ -343,7 +343,7 @@ kmeans_graphing_df = fitted_list_2 %>%
   left_join(kmeans_df, by = "region") %>% 
   dplyr::select(region, t, cases, cluster)
 
-labels = c(`1` = "Cluster 1: a = 198895, b = 0.26, c = 39.61", `2` = "Cluster 2: a = 24196, b = 0.08, c = 73.55", `3` = "Cluster 3: a = 7970, b = 0.13, c = 35.23")
+labels = c(`1` = "Cluster 1: a = 80635, b = 0.09, c = 75.09", `2` = "Cluster 2: a = 460, b = 0.38, c = 28.62", `3` = "Cluster 3: a = 6610, b = 0.11, c = 37.77", `4` = "Cluster 4: a = 12518, b = 0.21, c = 30.02")
 
 kmeans_graphing_df %>% 
   ggplot(aes(x = t, y = cases)) +
@@ -421,7 +421,6 @@ gmm_plot = gmm_graphing_df %>%
 ggplotly(gmm_plot, tooltip = "text")
 ```
 
-<<<<<<< HEAD
 # Answering Questions from Task 1
 ## How many regions have passed the midpoint?
 ```{r}
@@ -439,7 +438,8 @@ midpoint_table = midpoint_df %>%
 kable(midpoint_table) %>% 
   kable_styling("striped", full_width = F) %>%
   save_kable("./visualizations/midpoint_table.jpg")
-=======
+```
+
 ```{r income group plot, cache = TRUE, fig.height = 16}
 income_group_df = read_csv("./country_code_gdp_indicators.csv") %>% 
   janitor::clean_names() %>% 
@@ -486,6 +486,5 @@ income_group_plot = global_bank_df %>%
   )
 
 ggplotly(income_group_plot, tooltip = "text")
->>>>>>> 8cce8885262ac72a5628243bf1ef1c5f13f5e387
 ```
 
